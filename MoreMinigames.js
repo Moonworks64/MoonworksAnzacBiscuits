@@ -8,9 +8,7 @@ Game.registerMod('MoonworksMoreMinigames',{
         -save and load your intro text
     */
     init:function(){
-        Game.registerHook('logic',function(){Game.Notify('Logic went!','',0,0.5);});
         Game.registerHook('click', function() {
-            Game.Notify(choose(['A good click.','A solid click.','A mediocre click.','An excellent click!']),'',0,0.5);
             Game.gainBuff('blood frenzy', Math.ceil(1), 666);
         });
     },
