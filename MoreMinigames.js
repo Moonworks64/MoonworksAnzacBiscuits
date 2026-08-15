@@ -2,13 +2,14 @@
 const MEMver = "You alpha";
 const debug = 1;
 
+var MMMImagePrefix = 'https://moonworks64.github.io/MoreCookieMinigames/img';
+
 Game.registerMod('MoonworksMoreMinigames',{
     init:function(){
         // Load minigames
         var you = Game.Objects['You'];
-        you.minigameUrl = 'MoreMinigames/minigameVats.js';
+        you.minigameUrl = 'https://moonworks64.github.io/MoreCookieMinigames/minigameVats.js';
         you.minigameName = 'Incubator Vats';
-        you.switchMinigame(1);
 
         Game.LoadMinigames();
 

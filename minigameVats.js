@@ -1065,7 +1065,7 @@ M.launch = function(){
 		};
 
 		M.showBinConfirmPrompt = function(clone) {
-			Game.Prompt('<noClose><id vatsBinConfirm><h3>Destroy clone?</h3><div class="block">'+tinyIcon([4,2,'MoreMinigames/img/vatsClones.png'])+
+			Game.Prompt('<noClose><id vatsBinConfirm><h3>Destroy clone?</h3><div class="block">'+tinyIcon([4,2,MMMImagePrefix+'/vatsClones.png'])+
 				'<div class="line"></div>'+
 				'<div id="vatsBinConfirmContainer">'+
 					'Are you <b>SURE</b> you want to <span class="red"><b>destroy</b></span> this clone?'+
@@ -1103,7 +1103,7 @@ M.launch = function(){
 
 			name = '<b>'+ name +'</b>';
 
-			Game.Prompt('<noClose><id vatsTicksPrompt><h3>Set Duration</h3><div class="block">'+tinyIcon([icon[0],icon[1],'MoreMinigames/img/vatsClones.png'])+'<div class="line"></div>'+
+			Game.Prompt('<noClose><id vatsTicksPrompt><h3>Set Duration</h3><div class="block">'+tinyIcon([icon[0],icon[1],MMMImagePrefix+'/vatsClones.png'])+'<div class="line"></div>'+
 				'<div id="vatsTicksPromptContainer"></div></div>',
 				[['Submit',0,'float:left'],['Cancel',0,'float:right']],
 				function() {
@@ -1189,18 +1189,18 @@ M.launch = function(){
 			
 			// Icon + Name + activity
 			var str = '<div class="block" style="text-align:left;">'+
-				'<div class="icon" style="background:url(MoreMinigames/img/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-ageStage*48)+'px 0px;"></div>'+
+				'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-ageStage*48)+'px 0px;"></div>'+
 				'<div class="name">'+M.getCloneName(clone.name)+'</div><div><small>'+ activity +'</small></div>'+
 				'<div class="line"></div>'+
 				// Aging report
 				'<div style="text-align:center;">'+
 					'<div style="display:inline-block;position:relative;box-shadow:0px 0px 0px 1px #000,0px 0px 0px 1px rgba(255,255,255,0.5) inset,0px -2px 2px 0px rgba(255,255,255,0.5) inset;width:256px;height:6px;background:linear-gradient(to right,#ffffff 0%,#f200a1 '+(100*M.ageBrackets[1]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[1]/M.ageBrackets[4]))+'%,#2300ef '+(100*M.ageBrackets[2]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[2]/M.ageBrackets[4]))+'%, #00efe3 '+(100*M.ageBrackets[3]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[3]/M.ageBrackets[4]))+'%, #5af230 100%)">'+
 						'<div class="vatsCloneGrowthIndicator" style="left:'+Math.floor((ageAlpha)*256)+'px;"></div>'+
-						'<div style="background:url(MoreMinigames/img/vatsClones.png);background-position:0px 0px;position:absolute;left:'+(0-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url(MoreMinigames/img/vatsClones.png);background-position:'+(-1*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[1]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url(MoreMinigames/img/vatsClones.png);background-position:'+(-2*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[2]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url(MoreMinigames/img/vatsClones.png);background-position:'+(-3*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[3]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url(MoreMinigames/img/vatsClones.png);background-position:'+(-4*48)+'px 0px;position:absolute;left:'+(256-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:0px 0px;position:absolute;left:'+(0-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-1*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[1]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-2*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[2]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-3*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[3]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-4*48)+'px 0px;position:absolute;left:'+(256-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
 					'</div><br>'+
 					'<b>'+loc("Age: ")+'</b> '+ M.ageNames[ageStage] +'<br>'+
 					'<small>'+((clone.therapy == 'cryo')?('Clone aging frozen<br>'):(ageStage == 4)?('This clone has fully grown!<br>'):('Next stage in: '+ M.getDurStrFromTicks(M.ageBrackets[ageStage+1]-clone.age) +'.<br>Fully grown in: '+ M.getDurStrFromTicks(M.ageBrackets[4]-clone.age) +'.<br>'))+'</small>'+
@@ -1210,7 +1210,7 @@ M.launch = function(){
 				if (clone.therapy && clone.therapyDurRemaining > 0) {
 					str+='<div class="description">'+
 						'<div class="vatsTherapyEffect">'+
-							'<div class="icon" style="background:url(MoreMinigames/img/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-48*M.therapies[clone.therapy].icon[0])+'px '+-48*M.therapies[clone.therapy].icon[1]+'px;"></div>'+
+							'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-48*M.therapies[clone.therapy].icon[0])+'px '+-48*M.therapies[clone.therapy].icon[1]+'px;"></div>'+
 							'<div class="name">'+ M.therapies[clone.therapy].name +'</div>'+
 							'<div class="line"></div>'+
 							'<div style="text-align:left;">'+
@@ -1408,7 +1408,7 @@ M.launch = function(){
 				'</small>';
 				
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsInfo">'+
-					'<div class="icon" style="background:url(MoreMinigames/img/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Incubator Vats Info</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
@@ -1423,7 +1423,7 @@ M.launch = function(){
 		M.binTooltip = function(id) {
 			return function() {
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsInfo">'+
-					'<div class="icon" style="background:url(MoreMinigames/img/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-3*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-3*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Destroy Clone</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
@@ -1446,7 +1446,7 @@ M.launch = function(){
 						if (M.parent.amount < therapy.youRequirement) {
 							str+='<div style="text-align:center;">Therapy unlocked at '+therapy.youRequirement+' <b>You</b>.</div>';
 						} else {
-							str+='<div class="icon" style="background:url(MoreMinigames/img/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-therapy.icon[0]*48)+'px '+(-therapy.icon[1]*48)+'px;"></div>'+
+							str+='<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-therapy.icon[0]*48)+'px '+(-therapy.icon[1]*48)+'px;"></div>'+
 							'<div style="float:right;text-align:right;width:150px;"><small>'+ M.getDurStrFromTicks(1) +' of therapy costs:</small><br><span class="price '+ (M.canAfford(cost)?'':'disabled') +'">'+Beautify(Math.round(shortenNumber(cost)))+'</span><br><small>'+loc("%1 of CpS",[Game.sayTime((cost/Game.cookiesPs)*Game.fps,-1)])+'</small></div>'+
 							'<div style:"width:200px;"><div class="name">'+ therapy.name +'</div><small>Drag this therapy onto a clone in storage to enact the therapy.</small></div>'+
 							'<div class="line"></div>'+
@@ -1631,7 +1631,7 @@ M.launch = function(){
 
 		var str='';
 		str+='<style>'+
-		'#vatsBG{background:url('+Game.resPath+'img/shadedBorders.png),url(MoreMinigames/img/BGvats.png);background-size:100% 100%,auto;position:absolute;left:0px;right:0px;top:0px;bottom:16px;}'+
+		'#vatsBG{background:url('+Game.resPath+'img/shadedBorders.png),url('+MMMImagePrefix+'/BGvats.png);background-size:100% 100%,auto;position:absolute;left:0px;right:0px;top:0px;bottom:16px;}'+
 		'#vatsContent{position:relative;box-sizing:border-box;padding:4px;text-align:center;}'+
 		
 		'#vatsCenter{text-align:center;padding:8px;position:absolute;top:4px;left:35%;width:30%;height:'+M.topShelfSize+'px;box-sizing:border-box;}'+
@@ -1653,7 +1653,7 @@ M.launch = function(){
 	
 		'.debugclass{outline:1px red solid;}'+
 
-		'.vatsVat{cursor:pointer;position:relative;color:#f33;text-shadow:0px 0px 4px #000,0px 0px 6px #000;font-weight:bold;font-size:12px;display:inline-block;width:60px;height:74px;background:url(MoreMinigames/img/crudeVats.png);}'+
+		'.vatsVat{cursor:pointer;position:relative;color:#f33;text-shadow:0px 0px 4px #000,0px 0px 6px #000;font-weight:bold;font-size:12px;display:inline-block;width:60px;height:74px;background:url('+MMMImagePrefix+'/crudeVats.png);}'+
 		'.vatsVat.on:hover{z-index:1000000001;top:-1px;}'+
 		'.vatsVat.on:active{top:1px;}'+
 		'.vatsVat:hover{background-position:0px -74px;} .vatsVat:active{background-position:0px 74px;}'+
@@ -1662,7 +1662,7 @@ M.launch = function(){
 		'.vatsVat3{background-position:-180px 0px;} .vatsVat3:hover{background-position:-180px -74px;} .vatsVat3:active{background-position:-180px 74px;}'+
 		
 		'.vatsCloneHolder{cursor:pointer;display:inline-block;position:relative;width:100%;height:100%;}'+
-		'.vatsCloneIcon{pointer-events:none;width:48px;height:48px;position:relative;background:url(MoreMinigames/img/vatsClones.png);z-index:11;}'+
+		'.vatsCloneIcon{pointer-events:none;width:48px;height:48px;position:relative;background:url('+MMMImagePrefix+'/vatsClones.png);z-index:11;}'+
 		'.vatsCloneHolderDrag{position:absolute;left:0px;top:0px;right:0px;bottom:0px;background:#999;opacity:0;cursor:pointer;}'+
 		'.vatsCloneHolder:hover .vatsCloneIcon{top:-1px;}'+
 		'.vatsCloneHolder:hover .vatsCloneIcon{animation-name:bounce;animation-duration:0.8s;}'+
@@ -1769,7 +1769,7 @@ M.launch = function(){
 							},
 							4);
 					};
-					str+='<div style="width:24px;height:24px;margin-bottom:23px;display:inline-block;background:url(MoreMinigames/img/vatsClones.png);background-position:0px '+(-2*48)+'px;"></div>';
+					str+='<div style="width:24px;height:24px;margin-bottom:23px;display:inline-block;background:url('+MMMImagePrefix+'/vatsClones.png);background-position:0px '+(-2*48)+'px;"></div>';
 					str+=M.makeVat('combinerOutputVat', 'Combiner Output',
 					function(clone) {
 						return;
