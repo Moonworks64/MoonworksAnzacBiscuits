@@ -1,6 +1,6 @@
 // MOONWORKS EXTRA MINIGAMES MOD BEGIN
 const MEMver = "You alpha";
-const debug = 1;
+const debug = 0;
 
 var MMMImagePrefix = 'https://moonworks64.github.io/MoreCookieMinigames/img';
 
