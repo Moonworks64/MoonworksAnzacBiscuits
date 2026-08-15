@@ -5,5 +5,5 @@ Currently it adds:
 (I'm working on adding more okay!)
 
 Load the mod by putting:
-Game.LoadMod('https://github.com/Moonworks64/MoreCookieMinigames');
+Game.LoadMod('https://moonworks64.github.io/MoreCookieMinigames/MoreMinigames.js');
 into the console, which can be accessed by right-clicking -> inspect -> console.
