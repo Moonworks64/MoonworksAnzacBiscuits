@@ -2,7 +2,7 @@
 const MEMver = "You alpha";
 const debug = 1;
 
-Game.registerMod('MoonworksExtraMinigames',{
+Game.registerMod('MoonworksMoreMinigames',{
     init:function(){
         // Load minigames
         var you = Game.Objects['You'];
@@ -101,12 +101,9 @@ Game.registerMod('MoonworksExtraMinigames',{
     },
     save:function(){
         //note: we use stringified JSON for ease and clarity but you could store any type of string
-        return JSON.stringify({testSave:"test saving stuff"})
+        return JSON.stringify()
     },
     load:function(str){
         var data = JSON.parse(str);
-        if (data.text) {
-            Game.Popup(testSave, Game.mouseX,Game.mouseY);
-        }
     },
 });
