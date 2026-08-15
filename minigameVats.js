@@ -72,7 +72,7 @@ M.launch = function(){
 		M.lastClone = 0;
 		M.creationNum = 0;
 
-		M.tickDur = (3 * 60); // 3 minutes so 20 ticks = 1 hour
+		M.tickDur = MEMdebug?0.1:(3 * 60); // 3 minutes so 20 ticks = 1 hour
 		M.nextTick = Date.now() + (M.tickDur * 1000);
 		
 		M.toCompute = false;
@@ -1832,14 +1832,6 @@ M.launch = function(){
 			vat.l = l('vat-'+ i)
 			AddEvent(vat.l,'mouseover',function(what){return function(){M.hoverVat(what);}}(i));
 			AddEvent(vat.l,'mouseout',function(what){return function(e){if (e.button==0){M.hoverVat(-1);}}}(i));
-
-			console.log(vat.holds + ' on vat load')
-			for (var ii in M.clones) {
-				if (M.clones[ii].location == i) {
-					vat.holds = M.clones[ii];
-				};
-			};
-			console.log(vat.holds + ' on post vat load fix')
 		};
 
 		for (var i in M.therapies)
@@ -1990,6 +1982,9 @@ M.launch = function(){
 			parseInt(M.synthesizerSacPool[building])+':'
 		};
 
+		console.log('Saving incubator vats:');
+		console.log(str);
+
 		return str;
 	}
 	
@@ -1997,6 +1992,8 @@ M.launch = function(){
 		//interpret str; called after .init
 		//note : not actually called in the Game's load; see "minigameSave" in main.js
 		if(!str) return false;
+		console.log('Loading incubator vats:');
+		console.log(str);
 		var si=0;
 		var spl=str.split('!');
 		var si2=0;
@@ -2042,7 +2039,6 @@ M.launch = function(){
 					new M.clone(name, location, personality, potential, age, upgradePower, upgradeRolls, stats, therapy, therapyDurRemaining, canBePickedUp, id, true);
 					M.calculateStatValues(M.lastClone.potential, M.lastClone.stats);
 					cloneNum++;
-					console.log(M.lastClone.location + ' location on load');
 				};
 			};
 		};

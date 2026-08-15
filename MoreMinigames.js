@@ -1,19 +1,20 @@
 // MOONWORKS EXTRA MINIGAMES MOD BEGIN
-const MEMver = "You alpha";
-const debug = 0;
+var MEMver = "You beta";
+var MEMdebug = 0;
+var isLocal = 0;
 
-var MMMImagePrefix = 'https://moonworks64.github.io/MoreCookieMinigames/img';
+var MMMImagePrefix = isLocal?'MoreMinigames/img':'https://moonworks64.github.io/MoreCookieMinigames/img';
 
 Game.registerMod('MoonworksMoreMinigames',{
     init:function(){
         // Load minigames
         var you = Game.Objects['You'];
-        you.minigameUrl = 'https://moonworks64.github.io/MoreCookieMinigames/minigameVats.js';
+        you.minigameUrl = isLocal?'MoreMinigames/minigameVats.js':'https://moonworks64.github.io/MoreCookieMinigames/minigameVats.js';
         you.minigameName = 'Incubator Vats';
 
         Game.LoadMinigames();
 
-        if (debug) {
+        if (MEMdebug) {
             //Game.HardReset(-1)
             Game.OpenSesame();
             Game.Earn(50000000000000000000000000000000000000000);
