@@ -97,7 +97,7 @@ Game.registerMod('MoonworksMoreMinigames',{
         };
 
         setTimeout(function() {
-            Game.Notify('Loaded Moonworks\' extra minigames!', "Thanks for checking it out! Please contact me if you have any issues, questions or suggestions.<br>Version: "+MEMver, [9, 21]);
+            Game.Notify('Loaded Moonworks\' extra minigames!', "Thanks for checking it out! Please contact me if you have any issues, questions or suggestions. Currently adds a minigame for: <b>You</b>.<br>Version: "+MEMver, [9, 21]);
         }, 1500)
     },
     save:function(){

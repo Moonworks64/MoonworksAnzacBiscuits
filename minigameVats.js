@@ -801,7 +801,7 @@ M.launch = function(){
 
 		M.calculateStatValues = function(potential, stats) {
 			for (var i in stats) {
-				stats[i].power = stats[i].upgradeHits * (isFavoured?M.favouredPowerMult:1) * ((stats[i].negative)?-1:1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
+				stats[i].power = stats[i].upgradeHits * (M.isFavoured?M.favouredPowerMult:1) * ((stats[i].negative)?-1:1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
 				if (stats[i].power > 1) { // Cunk over stats that surpass 1% because that would be ludicrous
 					stats[i].power = (stats[i].power-1)/10 + 1;
 				};
