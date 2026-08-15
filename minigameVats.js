@@ -93,7 +93,7 @@ M.launch = function(){
 		M.upgradePowerMin = 0.1;
 		M.statWeightMin = 0;
 		
-		M.ageBrackets = [0, 20*1, 20*2, 20*4, 20*6]; //In ticks // Please for the love of me not having to change a bunch of numbers, do not change these
+		M.ageBrackets = [0, 20*1, 20*3, 20*6, 20*12]; //In ticks // Please for the love of me not having to change a bunch of numbers, do not change these
 		M.ageNames = ['Baby', 'Toddler', 'Child', 'Teenager', 'Adult'];
 		
 		M.storageVatNum = 6;
