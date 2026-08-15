@@ -1832,6 +1832,14 @@ M.launch = function(){
 			vat.l = l('vat-'+ i)
 			AddEvent(vat.l,'mouseover',function(what){return function(){M.hoverVat(what);}}(i));
 			AddEvent(vat.l,'mouseout',function(what){return function(e){if (e.button==0){M.hoverVat(-1);}}}(i));
+
+			console.log(vat.holds + ' on vat load')
+			for (var ii in M.clones) {
+				if (M.clones[ii].location == i) {
+					vat.holds = M.clones[ii];
+				};
+			};
+			console.log(vat.holds + ' on post vat load fix')
 		};
 
 		for (var i in M.therapies)
@@ -2034,6 +2042,7 @@ M.launch = function(){
 					new M.clone(name, location, personality, potential, age, upgradePower, upgradeRolls, stats, therapy, therapyDurRemaining, canBePickedUp, id, true);
 					M.calculateStatValues(M.lastClone.potential, M.lastClone.stats);
 					cloneNum++;
+					console.log(M.lastClone.location + ' location on load');
 				};
 			};
 		};
