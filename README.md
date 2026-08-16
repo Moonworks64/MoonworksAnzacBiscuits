@@ -1,6 +1,7 @@
 This is a mod for Cookie Clicker which adds extra minigames to the buildings.
 Currently it adds:<br>
-    - Incubator Vats (for You).<br>
+    - Incubator Vats (You minigame).<br>
+        Synthesize and raise clones to maximize the strength of a clone's genes, then purchase You for them to take on those genes as effects to enhance your cookie production!
 
 (I'm working on adding more okay!)<br>
 
