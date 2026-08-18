@@ -11,6 +11,7 @@ if(Game.Objects[minigameBuildingName].minigame) throw new Error("Vats prevented 
 var M = {};
 M.parent = Game.Objects[minigameBuildingName];
 M.parent.minigame = M;
+M.isModded = 1;
 
 M.launch = function(){
 	var M = this;
@@ -361,7 +362,7 @@ M.launch = function(){
 				name:'Peaceful',
 				weight:0.05,
 				sacLike:'Farm',
-				favouredStats:{'farmCps':[1,1], 'farmCost':[0.5, 0.6], 'shimmeringVeilBoost':[0.1, 0.2]},
+				favouredStats:{'farmCps':[1,1], 'farmCost':[0.5, 0.6], 'sugarLumpGrowth':[0.1, 0.2]},
 				quote:'Their ideal afternoon is spent residing in the quite soundscapes of the countryside.',
 			},
 			'withdrawn':{
@@ -438,7 +439,7 @@ M.launch = function(){
 				name:'Enlightened',
 				weight:0.05,
 				sacLike:'Prism',
-				favouredStats:{'prismCps':[1,1], 'prismCost':[0.5, 0.6], 'sugarLumpGrowth':[0.1, 0.2]},
+				favouredStats:{'prismCps':[1,1], 'prismCost':[0.5, 0.6], 'shimmeringVeilBoost':[0.1, 0.2]},
 			},
 			'thrillSeeking':{
 				name:'Thrill-Seeking',
@@ -505,7 +506,7 @@ M.launch = function(){
 
 					for (var i in clone.stats) {
 						var stat = clone.stats[i];
-						if (M.isStatFavoured(clone, i)) {
+						if (M.isStatFavoured(clone.personality, i)) {
 							stat.weight += 0.05
 						}
 					};
@@ -636,13 +637,13 @@ M.launch = function(){
 
 			var effs={};
 			for (var i in M.youStats) {
-				M.calculateStatValues(M.youStats[i].potential, M.youStats[i].stats)
+				M.calculateStatValues(M.youStats[i].stats, M.youStats[i].potential, M.youStats[i].personality);
 				for (var ii in M.youStats[i].stats) {
 					var stat = M.youStats[i].stats[ii];
 					if (effs[ii]) {
-						effs[ii] += stat.power;
+						effs[ii] += stat.power * M.youStats[i].mult;
 					} else { 
-						effs[ii] = 1+stat.power;
+						effs[ii] = 1+(stat.power * M.youStats[i].mult);
 					};
 				};
 			};
@@ -658,6 +659,16 @@ M.launch = function(){
 			var primeClone = primeVat.holds;
 			var youNumber = String(M.parent.amount);
 			var stats = {};
+
+			var latestYou = 0;
+			var greatestYou = -1;
+			for (var i in M.youStats) {
+				if (Number(i) > greatestYou) {
+					greatestYou = Number(i);
+				};
+			};
+
+			latestYou = greatestYou!=-1?M.youStats[String(greatestYou)]:0;
 
 			if (primeClone) {
 				for (var i in primeClone.stats) {
@@ -677,12 +688,27 @@ M.launch = function(){
 					},100);
 				};
 				
-				M.calculateStatValues(primeClone.potential, stats)
-				
+				M.calculateStatValues(stats, primeClone.potential, primeClone.personality);
+			};
+
+			
+			// If the last you bought has the same stats as this one, just increase it's mult to save space
+			if (latestYou && JSON.stringify(latestYou.stats) == JSON.stringify(stats)) {
+				latestYou.mult++;
+			} else if (primeClone) {
 				M.youStats[youNumber] = {};
 				M.youStats[youNumber].stats = stats;
 				M.youStats[youNumber].copiedCloneName = primeClone.name;
 				M.youStats[youNumber].potential = primeClone.potential;
+				M.youStats[youNumber].personality = primeClone.personality;
+				M.youStats[youNumber].mult = 1;
+			} else { // Nothing in the prime vat case
+				M.youStats[youNumber] = {};
+				M.youStats[youNumber].stats = {};
+				M.youStats[youNumber].copiedCloneName = 0;
+				M.youStats[youNumber].potential = 0;
+				M.youStats[youNumber].personality = 0;
+				M.youStats[youNumber].mult = 1;
 			};
 			
 			M.toCompute = true;			
@@ -691,10 +717,23 @@ M.launch = function(){
 		M.buildingSold  = function() {
 			var primeVat = M.vats['primeVat'];
 			var rect=primeVat.l.getBounds();
-			var youNumber = M.parent.amount+1;
+			var latestYou = 0;
+			var greatestYou = -1;
 
-			if (M.youStats[youNumber]) {
-				delete(M.youStats[youNumber]);
+			for (var i in M.youStats) {
+				if (Number(i) > greatestYou) {
+					greatestYou = Number(i);
+				};
+			};
+			
+			latestYou = greatestYou!=-1?M.youStats[String(greatestYou)]:0;
+
+			if (latestYou) {
+				if (latestYou.mult > 1) {
+					latestYou.mult --;
+				} else {
+					delete(M.youStats[String(greatestYou)]);
+				};
 
 				if (M.primeVatCooldown==0) {
 					Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
@@ -791,17 +830,17 @@ M.launch = function(){
 			return text
 		};
 
-		M.getFavouredStats = function(clone) {
-			return M.personalities[clone.personality].favouredStats;
+		M.getFavouredStats = function(personality) {
+			return M.personalities[personality].favouredStats;
 		};
 
-		M.isStatFavoured = function(clone, stat) {
-			return M.getFavouredStats(clone)[stat];
+		M.isStatFavoured = function(personality, stat) {
+			return M.getFavouredStats(personality)[stat];
 		};
 
-		M.calculateStatValues = function(potential, stats) {
+		M.calculateStatValues = function(stats, potential, personality) {
 			for (var i in stats) {
-				stats[i].power = stats[i].upgradeHits * (M.isFavoured?M.favouredPowerMult:1) * ((stats[i].negative)?-1:1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
+				stats[i].power = stats[i].upgradeHits * (M.isStatFavoured(personality, i)?M.favouredPowerMult:1) * ((stats[i].negative)?-1:1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
 				if (stats[i].power > 1) { // Cunk over stats that surpass 1% because that would be ludicrous
 					stats[i].power = (stats[i].power-1)/10 + 1;
 				};
@@ -810,7 +849,7 @@ M.launch = function(){
 
 		M.upgradeStat = function(clone, stat, hits, negative) {
 			var statData = M.stats[stat];
-			var isFavoured = M.isStatFavoured(clone, stat);
+			var isFavoured = M.isStatFavoured(clone.personality, stat);
 			if (hits==undefined) hits = 1;
 
 			// If the stat is not present, set it to 0 instead
@@ -824,14 +863,14 @@ M.launch = function(){
 				clone.stats[stat].upgradeHits += clone.upgradePower * hits;
 				clone.stats[stat].negative = negative==undefined?clone.stats[stat].negative:(clone.stats[stat].negative && negative)
 			};
-			M.calculateStatValues(clone.potential, clone.stats);
+			M.calculateStatValues(clone.stats, clone.potential, clone.personality);
 		};
 
 		M.rollForBaseStats = function(clone)
 		{	
 			// Roll for favoured stats
-			for (var i in M.getFavouredStats(clone)) {
-				var statData = M.getFavouredStats(clone)[i];
+			for (var i in M.getFavouredStats(clone.personality)) {
+				var statData = M.getFavouredStats(clone.personality)[i];
 				if (Math.random() < M.linearTransformTable(statData, clone.potential)) {
 					M.upgradeStat(clone, i)
 				};
@@ -901,7 +940,7 @@ M.launch = function(){
 			M.destroyClone(clone1);
 			M.destroyClone(clone2);
 
-			M.calculateStatValues(M.lastClone.potential, M.lastClone.stats);
+			M.calculateStatValues(M.lastClone.stats, M.lastClone.potential, M.lastClone.personality);
 
 			var rect = M.vats['combinerOutputVat'].l.getBounds();
 			Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
@@ -1238,7 +1277,7 @@ M.launch = function(){
 					var geneStr = ''
 					for (var i in clone.stats) {
 						var stat = clone.stats[i];
-						var isFavoured = M.isStatFavoured(clone, i);
+						var isFavoured = M.isStatFavoured(clone.personality, i);
 						geneStr+='<div style="height:15px">'+
 							'<div style="z-index:1;position:relative;font-size:11px;font-weight:bold;" class="'+ ((stat.power==0)?'gray':((stat.negative)?'red':'green')) +'">'+(isFavoured?'★':'&bull;')+' '+ ((stat.power==0)?'???':M.stats[i].statStr) +' '+ ((stat.power>0)?'+':'') + ((stat.power==0)?'?':(Math.abs(stat.power)>0.01)?(Math.round(stat.power*10000)/100):(stat.power*100).toPrecision(1)) +'%</div>'+
 							'<div style="position:relative;width:'+100*(stat.weight/totalWeight)+'%;top:-13px;height:13px;background:linear-gradient(to right, #00000000 0%, #33e0ff33 33%, #33e0ff88 100%)"></div>'+
@@ -1329,46 +1368,18 @@ M.launch = function(){
 			return function() {
 				var building = Game.Objects[minigameBuildingName];
 				var effStr = '';
-				var effList = {};
-				var setsNum = 0;
-				
-				// This is all hacky nonsense
-				
-				// i = you num, v = {'cps':0.01, 'click':0.01, etc}
-				for (var i = 1; i <= building.amount; i++) {
-					var stats = M.youStats[i]?M.youStats[i].stats:{};
-
-					// Clean up ineffective stats
-					for (var ii in stats) {
-						if (stats[ii].upgradeHits == 0) {
-							delete(stats[ii]);
-						};
-					};
-
-					var stringifiedStats = JSON.stringify(stats) // Lmaoooo
-					var v = effList[stringifiedStats + (setsNum - 1)] 
-					if (v) {
-						v.lowestYou = (v.lowestYou > i)?i:v.lowestYou;
-						v.highestYou = (v.highestYou < i)?i:v.highestYou;
-					} else {
-						effList[stringifiedStats + setsNum] = {};
-						effList[stringifiedStats + setsNum].stats = stats
-						effList[stringifiedStats + setsNum].lowestYou = i;
-						effList[stringifiedStats + setsNum].highestYou = i;
-						setsNum++;
-					}
-				};
 				
 				effStr+='<div>'
 				// Individual sets
 				var totalEff = [];
-				for (var i in effList)
+				for (var i in M.youStats)
 				{	
-					var v = effList[i];
-					var mult = 1+(v.highestYou-v.lowestYou)
-					var copiedCloneName = M.youStats[v.lowestYou]?M.getCloneName(M.youStats[v.lowestYou].copiedCloneName):0;
+					var v = M.youStats[i];
+					var mult = v?v.mult:1;
+					var highestYou = Number(i)+mult-1;
+					var copiedCloneName = v.copiedCloneName?M.getCloneName(v.copiedCloneName):0;
 					
-					effStr+='<div style="font-size:11px;margin-left:48px;">'+ v.lowestYou + ((v.lowestYou!=v.highestYou)?'-'+ v.highestYou:'') +' ('+ mult +')'+ ((copiedCloneName != 0)?' <small>(Copying genes from <b>'+ copiedCloneName +'</b>)</small>':'') +':</div>'
+					effStr+='<div style="font-size:11px;margin-left:48px;">'+ i + ((Number(i)!=highestYou)?'-'+ highestYou:'') +' ('+ mult +'x)'+ ((copiedCloneName != 0)?' <small>(Copying genes from <b>'+ copiedCloneName +'</b>)</small>':'') +':</div>'
 					
 					var otherEffectStr = ''
 					for (var statId in v.stats) {
@@ -1926,6 +1937,23 @@ M.launch = function(){
 	M.save = function(){
 		// run when game saved - even if minigame not opened
 		//output cannot use ",", ";" or "|"
+		// Just a dummy function
+		return '';
+	};
+
+	M.load = function(str){
+		// run when game saved - even if minigame not opened
+		//output cannot use ",", ";" or "|"
+		// Just a dummy function
+		if(!str) return false;
+		
+		M.saveString = str;
+	};
+
+	M.modSave = function(){
+		// run when game saved - even if minigame not opened
+		//output cannot use ",", ";" or "|"
+		// In use: "!", "?", ":"
 
 		var str=''+
 		parseInt(M.parent.onMinigame?'1':'0')+':'+
@@ -1951,30 +1979,34 @@ M.launch = function(){
 			parseInt(clone.therapyDurRemaining)+':'+
 			clone.location+':'+
 			parseInt(clone.canBePickedUp)+':'
+			str+='?';
 			for (var ii in clone.stats) {
 				var stat = clone.stats[ii];
-				str+=stat.negative+':'+
+				str+=ii+':'+
+				stat.negative+':'+
 				parseFloat(stat.weight)+':'+
-				parseFloat(stat.upgradeHits)+':'+
-				ii+':'
+				parseFloat(stat.upgradeHits)+':'
 				// Power is recalculated from hits and clone potential so no need to save it
 			};
-			str+='?' // ? = end of a sub save
+			str+='?';
 		};
 		str+='!'; // Save youStats
 		for (var youNum in M.youStats) {
 			var data = M.youStats[youNum];
 			str+=youNum+':'+
 			data.copiedCloneName+':'+
-			parseFloat(data.potential)+':'
+			parseFloat(data.potential)+':'+
+			data.personality+':'+
+			parseInt(data.mult)+':'+
+			'?';
 			for (var ii in data.stats) {
 				var stat = data.stats[ii];
-				str+=stat.negative+':'+
-				parseFloat(stat.upgradeHits)+':'+
-				ii+':'
+				str+=ii+':'+
+				stat.negative+':'+
+				parseFloat(stat.upgradeHits)+':'
 				// Power is recalculated from hits and potential so no need to save it
 			};
-			str+='?' // ? = start of a sub save
+			str+='?';
 		};
 		str+='!'; // Save synth sac pool
 		for (var building in M.synthesizerSacPool) {
@@ -1987,8 +2019,8 @@ M.launch = function(){
 
 		return str;
 	}
-	
-	M.load = function(str){
+
+	M.modLoad = function(str){
 		//interpret str; called after .init
 		//note : not actually called in the Game's load; see "minigameSave" in main.js
 		if(!str) return false;
@@ -2009,11 +2041,10 @@ M.launch = function(){
 		M.synthesizerTicksRemaining=parseInt(spl2[si2++]||M.synthesizerTicksRemaining);
 		var cloneData=spl[si++]||'';
 		if (cloneData) {
-			var cloneNum = 0
 			var clones = cloneData.split('?');
-			for (var i in clones[cloneNum]) {
+			for (var cloneNum = 0; clones[cloneNum]!='' && clones[cloneNum]!=undefined; cloneNum) {
 				var di = 0;
-				var splc = clones[cloneNum].split(':');
+				var splc = clones[cloneNum++].split(':');
 				if (splc[di]!='' && splc[di]!=undefined) {
 					var id = parseInt(splc[di++]);
 					var name = splc[di++];
@@ -2027,47 +2058,51 @@ M.launch = function(){
 					var location = splc[di++];
 					var canBePickedUp = parseInt(splc[di++]);
 					var stats = {};
-					for (var ii = di; (splc[ii]!='' && splc[ii] != undefined); ii) {
-						if (splc[ii]!='' && splc[ii] != undefined) {
+					var spls = clones[cloneNum++].split(':');
+					for (var ii = 0; (spls[ii]!='' && spls[ii] != undefined); ii) {
+						if (spls[ii]!='' && spls[ii] != undefined) {
+							var statName = spls[ii++];
 							var statData = {};
-							statData.negative = splc[ii++]=='true';
-							statData.weight = parseFloat(splc[ii++]);
-							statData.upgradeHits = parseFloat(splc[ii++]);
-							stats[splc[ii++]] = statData;
+							statData.negative = spls[ii++]=='true';
+							statData.weight = parseFloat(spls[ii++]);
+							statData.upgradeHits = parseFloat(spls[ii++]);
+							statData.power = 0;
+							stats[statName] = statData;
 						};
 					};
 					new M.clone(name, location, personality, potential, age, upgradePower, upgradeRolls, stats, therapy, therapyDurRemaining, canBePickedUp, id, true);
-					M.calculateStatValues(M.lastClone.potential, M.lastClone.stats);
-					cloneNum++;
+					M.calculateStatValues(M.lastClone.stats, M.lastClone.potential, M.lastClone.personality);
 				};
 			};
 		};
 		var youStats=spl[si++]||'';
 		if (youStats) {
-			var youNum = 0
 			var yous = youStats.split('?');
-			for (var i in yous[youNum]) {
+			for (var youNum = 0; yous[youNum]!= '' && yous[youNum]!= undefined; youNum) {
 				var di = 0;
-				var sply = yous[youNum].split(':');
+				var sply = yous[youNum++].split(':');
 				if (sply[di]!='' && sply[di]!=undefined) {
 					var youData = {};
 					var stats = {};
 					var youId = sply[di++];
 					youData.copiedCloneName = sply[di++];
 					youData.potential = parseFloat(sply[di++]);
-					for (var ii = di; (sply[ii]!='' && sply[ii] != undefined); ii) {
-						if (sply[ii]!='' && sply[ii] != undefined) {
+					youData.personality = sply[di++];
+					youData.mult = parseInt(sply[di++]);
+					var spls = yous[youNum++].split(':');
+					for (var ii = 0; (spls[ii]!='' && spls[ii] != undefined); ii) {
+						if (spls[ii]!='' && spls[ii] != undefined) {
+							var statName = spls[ii++];
 							var statData = {};
-							statData.negative = sply[ii++]=='true';
-							statData.upgradeHits = parseFloat(sply[ii++]);
+							statData.negative = spls[ii++]=='true';
+							statData.upgradeHits = parseFloat(spls[ii++]);
 							statData.power = 0;
-							stats[sply[ii++]] = statData;
+							stats[statName] = statData;
 						};
 					};
 					youData.stats = stats;
 					M.youStats[youId] = youData;
-					M.calculateStatValues(M.youStats[youId].potential, M.youStats[youId].stats);
-					youNum++;
+					M.calculateStatValues(M.youStats[youId].stats, M.youStats[youId].potential, M.youStats[youId].personality);
 				};
 			};
 		};
@@ -2085,13 +2120,13 @@ M.launch = function(){
 
 		M.toCompute = true;
 
-		M.saveString = str;
+		M.modSaveString = str;
 	}
 	
 	M.reset = function(hard){
 		// run when returning from an ascension, hard = 1 if full reset
 		M.creationNum = 0;
-		if (hard) {
+		if (hard == 1) {
 			M.clonesN = 0;
 			M.clones = {};
 			M.lastClone = 0;
@@ -2171,14 +2206,14 @@ M.launch = function(){
 			therapy.canBePickedUp = M.parent.amount >= therapy.youRequirement;
 		};
 
-		if ((Game.keys[16] || Game.keys[17]) && !M.sacBulkShortcutOn)
+		if ((Game.keys[16] || Game.keys[17]) && !M.sacBulkShortcutOn) // Shift / Ctrl
 		{
 			M.sacAmountOld=M.sacAddAmount;
-			if (Game.keys[16]) M.sacAddAmount=100;
-			if (Game.keys[17]) M.sacAddAmount=10;
+			if (Game.keys[16]) M.sacAddAmount=100; // Shift
+			if (Game.keys[17]) M.sacAddAmount=10; // Ctrl
 			M.sacBulkShortcutOn=1;
 		};
-		if ((!Game.keys[16] && !Game.keys[17]) && M.sacBulkShortcutOn)//release
+		if ((!Game.keys[16] && !Game.keys[17]) && M.sacBulkShortcutOn)//release // Shift / Ctrl
 		{
 			M.sacAddAmount=M.sacAmountOld;
 			M.sacBulkShortcutOn=0;

@@ -1,7 +1,7 @@
 // MOONWORKS EXTRA MINIGAMES MOD BEGIN
 var MEMver = "You beta";
-var MEMdebug = 0;
-var isLocal = 0;
+var isLocal = window.location.protocol=='http:';
+var MEMdebug = isLocal;
 
 var MMMImagePrefix = isLocal?'MoreMinigames/img':'https://moonworks64.github.io/MoreCookieMinigames/img';
 
@@ -32,7 +32,42 @@ Game.registerMod('MoonworksMoreMinigames',{
             }		
         };
 
+       // New buffs
+       new Game.buffType('glorious rays',function(time,pow)
+        {
+            return {
+                name:'Glorious Rays',
+                desc:'Cookie production +'+Math.floor(pow*100-100)+'% for '+Game.sayTime(time*Game.fps,-1)+'!',
+				icon:[14,30],
+				time:time*Game.fps,
+				max:true,
+				multCpS:pow,
+				aura:1
+            };
+        });
+        new Game.buffType('time dilation',function(time,pow)
+        {
+            return {
+                name:'Time Dilation',
+				desc:'Cookie production x'+pow+' for '+Game.sayTime(time*Game.fps,-1)+'!',
+				icon:[23,11],
+				time:time*Game.fps,
+				add:true,
+				multCpS:pow,
+				aura:2
+            };
+        });
+
         // Wrap vanilla functions
+        let oldGainBuff = Game.gainBuff;
+        Game.gainBuff = function(type,time,arg1,arg2,arg3) {
+            var buff = oldGainBuff(type, time, arg1, arg2, arg3);
+            buff.maxTime *=Game.eff('buffDur');
+            buff.time *=Game.eff('buffDur');
+            Game.recalculateGains = 1;
+            return buff;
+        };
+
         let oldComputeLumpTimes = Game.computeLumpTimes;
         Game.computeLumpTimes = function() {
             oldComputeLumpTimes();
@@ -103,9 +138,41 @@ Game.registerMod('MoonworksMoreMinigames',{
     },
     save:function(){
         //note: we use stringified JSON for ease and clarity but you could store any type of string
-        return JSON.stringify()
+        var str = '';
+        
+        for (var i in Game.Objects)//buildings
+        {
+            var me=Game.Objects[i];
+            if (me.id == 19)
+            {
+                if (Game.isMinigameReady(me)) str+=me.minigame.modSave()+','; else str+=(me.modMinigameSave||'')+',';
+            }
+            str+=';';
+        }
+        str+='|';
+
+        console.log(str);
+
+        return str;
     },
     load:function(str){
-        var data = JSON.parse(str);
+        var data = str;
+        console.log(data);
+
+        // Pray to heaven upon high that this works
+
+        setTimeout(function() {
+            var spl=data.split('|')[0];//buildings
+            var spl2 = spl.split(';')
+            for (var i in Game.ObjectsById)
+            {
+                var me=Game.ObjectsById[i];
+                if (spl2[i])
+                {
+                    var mestr=spl2[i].toString().split(',');
+                    if (me.minigame && me.minigame.isModded && me.minigameLoaded && me.minigame.reset) {me.minigame.reset(true);me.minigame.modLoad(mestr[0]||'');} else me.modSaveString=(mestr[0]||0);
+                }
+            }
+        }, 1500); // Have to do this stupidness because for some reason the minigame isn't loaded when .load is called.
     },
 });

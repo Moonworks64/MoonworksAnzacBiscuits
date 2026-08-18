@@ -22,6 +22,8 @@ The mod will need to be loaded every time you open up Cookie Clicker unless you 
 
 No Steam version yet! I don't have Cookie Clicker on steam, sorry!  
 
+Bugs may be present! Create a backup of your save data before loading!
+
 ## Content
 
 Currently it adds:  
