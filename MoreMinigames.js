@@ -32,31 +32,36 @@ Game.registerMod('MoonworksMoreMinigames',{
             }		
         };
 
-       // New buffs
-       new Game.buffType('glorious rays',function(time,pow)
-        {
-            return {
-                name:'Glorious Rays',
-                desc:'Cookie production +'+Math.floor(pow*100-100)+'% for '+Game.sayTime(time*Game.fps,-1)+'!',
-				icon:[14,30],
-				time:time*Game.fps,
-				max:true,
-				multCpS:pow,
-				aura:1
-            };
-        });
-        new Game.buffType('time dilation',function(time,pow)
-        {
-            return {
-                name:'Time Dilation',
-				desc:'Cookie production x'+pow+' for '+Game.sayTime(time*Game.fps,-1)+'!',
-				icon:[23,11],
-				time:time*Game.fps,
-				add:true,
-				multCpS:pow,
-				aura:2
-            };
-        });
+        // New upgrades
+
+        // New achievements
+
+        // New buffs
+        new Game.buffType('glorious rays',function(time,pow)
+            {
+                return {
+                    name:'Glorious Rays',
+                    desc:'Cookie production +'+Math.floor(pow*100-100)+'% for '+Game.sayTime(time*Game.fps,-1)+'!',
+                    icon:[14,30],
+                    time:time*Game.fps,
+                    max:true,
+                    multCpS:pow,
+                    aura:1
+                };
+            });
+            new Game.buffType('time dilation',function(time,pow)
+            {
+                return {
+                    name:'Time Dilation',
+                    desc:'Cookie production x'+pow+' for '+Game.sayTime(time*Game.fps,-1)+'!',
+                    icon:[23,11],
+                    time:time*Game.fps,
+                    add:true,
+                    multCpS:pow,
+                    aura:2
+                };
+            }
+        );
 
         // Wrap vanilla functions
         let oldGainBuff = Game.gainBuff;

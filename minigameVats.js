@@ -1272,7 +1272,7 @@ M.launch = function(){
 				'<div class="line"></div>'+
 				// Effects
 				'<div class="description">'+
-					'<div style="margin:6px 0px;"><b>'+loc("Genes:")+'</b> <span style="font-size:11px;">(while in the prime vat, purchasing a You will give it all these effects. Bar represents chance to be upgraded.)</span></div>';
+					'<div style="margin:6px 0px;"><b>'+loc("Genes:")+'</b> <span style="font-size:11px;">(while in the prime vat, purchasing a You will give that You all these effects. Bar represents chance to be upgraded.)</span></div>';
 					var totalWeight = M.getTotalWeight(clone.stats);
 					var geneStr = ''
 					for (var i in clone.stats) {
@@ -1411,7 +1411,7 @@ M.launch = function(){
 				effStr+='<div style="float:right;margin:0px 0px 8px 8px;"/><small style="line-height:100%;">'+
 				'&bull; New clones will gain genes based on their personality and potential.<br>'+
 				//'&bull; Low potential clones may also gain bonus genes, these genes may not be favoured.<br>'+
-				'&bull; When a clone rolls for upgrades, for each upgrade roll a clone has, a random gene will be chosen, that gene will then be upgraded by its upgrade value multiplied by the clone\'s upgrade power.<br>'+
+				'&bull; Clones will roll for upgrades when they enter a new age group. When a clone rolls for upgrades, for each upgrade roll a clone has, a random gene will be chosen, that gene will then be upgraded by its upgrade value multiplied by the clone\'s upgrade power.<br>'+
 				'&bull; Personalities may have favoured genes which have a higher upgrade value and upgrade chance.<br>'+
 				'&bull; High potential clones will generally have better genes than low potential clones.<br>'+
 				//'&bull; Clones do not reset when you ascend.<br>'+
