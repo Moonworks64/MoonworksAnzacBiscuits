@@ -161,7 +161,7 @@ Game.registerMod('MoonworksAnzacBiscuits',{
         };
 
         setTimeout(function() {
-            Game.Notify('Loaded Moonworks\' Anzac Biscuits!', "Thanks for checking it out! Please contact me if you have any issues, questions or suggestions. Currently adds a minigame for: <b>You (Cloning Facility)</b>.<br>Version: "+MEMver, [9, 21]);
+            Game.Notify('Loaded Moonwork\'s Anzac Biscuits!', "Thanks for checking it out! Please contact me if you have any issues, questions, confusions or suggestions. Currently adds a minigame for: <b>You (Cloning Facility)</b>.<br>Version: "+MEMver, [9, 21]);
         }, 1500)
     },
     save:function(){

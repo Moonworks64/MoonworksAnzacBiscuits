@@ -1,8 +1,8 @@
 # Moonwork's Anzac Biscuits
 
-*Current version: 0.1.*    
+*Current version: 0.1*    
 
-This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) which adds extra minigames to the buildings.  
+This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) which adds extra minigames to the buildings (and potentially some more things in future).  
 
 ## How to load
 
