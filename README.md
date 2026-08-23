@@ -8,13 +8,13 @@ This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) wh
 
 Go to Cookie Clicker and load the mod by putting:   
 
-> Game.LoadMod('https://moonworks64.github.io/MoreCookieMinigames/MoreMinigames.js');   
+> Game.LoadMod('https://moonworks64.github.io/MoonworksAnzacBiscuits/MoonworksAnzacBiscuits.js');   
 
 into the console, which can be accessed by right-clicking -> inspect -> console.    
 
 Alternatively, use a bookmarklet with the javascript code:  
 
-> javascript:Game.LoadMod('https://moonworks64.github.io/MoreCookieMinigames/MoreMinigames.js'); 
+> javascript:Game.LoadMod('https://moonworks64.github.io/MoonworksAnzacBiscuits/MoonworksAnzacBiscuits.js'); 
 
 To make a bookmarklet: Go to your bookmarks, right click -> new page, then set the url to the above javascript code and give it a good name like "Load More Minigames Mod". Save that bookmark and whenever you click on it, it'll run the javascript code above and load the mod in a single click! Make sure you're on your Cookie Clicker tab when you do this though.   
 
@@ -27,7 +27,7 @@ Bugs may be present! Create a backup of your save data before loading!
 ## Content
 
 Currently it adds:  
-- **Incubator Vats (You minigame)**.   
+- **Cloning Facility (You minigame)**.   
     - Synthesize and raise clones to maximize their gene strength, then purchase You for them to take on those genes as effects to enhance your cookie production!    
 
 (I'm working on adding more in future!) 

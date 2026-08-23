@@ -48,7 +48,7 @@ M.launch = function(){
 			var totalWeight = 0;
 			
 			for (var i in table) {
-				totalWeight += table[i].weight
+				totalWeight += Math.max(0,table[i].weight);
 			};
 
 			return totalWeight
@@ -60,7 +60,7 @@ M.launch = function(){
 			var chance = Math.random() * totalWeight;
  			var c = 0;
 			for (var i in table) {
-				c += table[i].weight;
+				c += Math.max(0,table[i].weight);
 				if (chance <= c) {
 					return i
 				};
@@ -68,10 +68,36 @@ M.launch = function(){
 			return
 		};
 
+		M.coolifyNumber = function(number, percent) {
+			var mult = percent?100:1;
+			return number==0?0:(Math.abs(number*mult)>=1?Math.round(number*100*mult)/100:(number*mult).toPrecision(2));
+		};
+
 		M.clones = {};
 		M.clonesN = 0;
 		M.lastClone = 0;
 		M.creationNum = 0;
+
+		M.unlockTiers = [[3, 'Synthesizer Mk II'], [6, 'Combiner'], [10, 'Combiner Mk II'], [15, 'Sacrificing'], [20, 'Synthesizer Mk III'], [30, 'Combiner Mk III'], [40, 'Synthesizer Mk IV'], [50, 'Combiner Mk IV'], [100, 'Contractor Clones']];
+		for (var i in M.unlockTiers) {M.unlockTiers[i][3] = i;};
+
+		M.totalCommissionsCompleted = 0;
+		M.commissionsCompleted = {};
+		M.currentCommission = 0;
+		M.commissionsSkipped = 0;
+		
+		M.commissionsSacrificeMin = 1;
+		M.commissionSacrificeLumpsPerContractSet = 10;
+		M.commissionsCurveMin = 0; // Favoured gene bonus mult min
+		M.commissionsCurveMax = 1/3; // Favoured gene bonus mult max, 1.5 * 1.3 = 2
+		M.commissionsCurveMod = 6;
+		M.commissionsAppliedPowerBase = 4;
+		M.commissionsAppliedPowerPerCurve = 25;
+		M.commissionsSkipCpsCostPerSkip = 2*60*60;
+
+		M.pppDiscount = 0.9;
+		M.pppChanceMult = 1.05;
+		M.pppFavouredPowerMult = 1.05;
 
 		M.tickDur = MEMdebug?0.1:(3 * 60); // 3 minutes so 20 ticks = 1 hour
 		M.nextTick = Date.now() + (M.tickDur * 1000);
@@ -79,25 +105,33 @@ M.launch = function(){
 		M.toCompute = false;
 		M.updateGraphics = false;
 
-		M.youStats = {};
-
 		M.topShelfSize = 140;
 		
-		M.baseStatNegativeChance = [0.6, 0.4];
+		M.baseStatNegativeChance = [0.6, 0.25];
+		M.bonusBaseStatStartingChance = 1.1;
 		M.bonusBaseStatsMin = 1;
 		M.bonusBaseStatMod = 0.6;
+		M.affectsClonesFirstWeightMult = 10;
+		
 		M.favouredWeightMult = 1.5;
 		M.favouredPowerMult = 1.5;
-		M.baseUpgradeRolls = 5;
+		
+		M.baseUpgradeRolls = 3;
 		M.upgradeRollsMin = 1
 		M.baseUpgradePower = 1;
 		M.upgradePowerMin = 0.1;
+		M.baseFusionsLeft = 2;
+		M.baseFusionsMin = 0;
 		M.statWeightMin = 0;
+		M.softMaxPotential = 1; // The max that can be obtained via synthesis rng
+		M.maxPotential = 1.1; // The max that can be obtained via external potential increasers
+
+		M.showStatBreakdown = 0;
 		
 		M.ageBrackets = [0, 20*1, 20*3, 20*6, 20*12]; //In ticks // Please for the love of me not having to change a bunch of numbers, do not change these
 		M.ageNames = ['Baby', 'Toddler', 'Child', 'Teenager', 'Adult'];
 		
-		M.storageVatNum = 6;
+		M.storageVatNum = 8;
 		M.vats = [];
 		M.vatsN = 0;
 
@@ -108,6 +142,8 @@ M.launch = function(){
 		M.combinerTicksRemaining = -1;
 		M.combinerTotalTicks = -1;
 
+		M.combinerGenePenalty = 0.9; // Every fusion, genes lose 10% applied upgrade power
+		M.combinerDoubleGenePenalty = 0.7; // Doubled up genes lose 30% instead
 		M.combinerCpSCostPerTick = 30;
 		M.combinerDestroyChanceMin = 0.15;
 		M.combinerDestroyChanceMax = 0.9;
@@ -117,6 +153,7 @@ M.launch = function(){
 		M.synthesizerDuration = -1;
 		M.synthesizerTicksRemaining = -1;
 
+		M.synthesizerPotentialMod = 3; // Not for min potential, just normal potential calculations
 		M.synthesizerCpSCostPerTick = 60;
 		M.synthesizerMinPotentialMin = 0;
 		M.synthesizerMinPotentialMax = 0.95;
@@ -157,16 +194,16 @@ M.launch = function(){
 			Standard weight = 1;
 			Standard increase = 0.000001 (generally *100 (For number of You's) to estimate it's effect on a full You battalion, this is 0.0001 = 0.01%)
 		*/
-		M.sC = M.favouredPowerMult * 100 * 100 * (1/5); // statCompensation, favoured stats get higher power, Number of yous * %
+		M.sC = M.favouredPowerMult * 100 * 100 * (1/5); // statCompensation, favoured stats have higher power * Number of yous * %
 		M.stats = {
 			'cps':{
-				weight:1, // Weight it'll be chosen as a bonus stat
+				weight:0.75, // Weight it'll be chosen as a bonus stat
 				upgradeWeight:[0.5,1], // Weight it'll be upgraded at min / max potential
 				upgradePower:[0.01/M.sC,0.015/M.sC], // Write in % + expected buff for favoured stats at 100 You's + upgrades, Upgrade power at min / max potential
 				statStr:loc('CpS'), // String displayed between &bull and the effect
 			},
 			'click':{
-				weight:1,
+				weight:0.75,
 				upgradeWeight:[0.5,1],
 				upgradePower:[0.05/M.sC,0.075/M.sC],
 				statStr:loc('cookies/click'),
@@ -208,13 +245,13 @@ M.launch = function(){
 				statStr:loc('wrath cookie frequency'),
 			},
 			'wrathCookieDur':{
-				weight:0.1,
+				weight:0.5,
 				upgradeWeight:[0.5,1],
 				upgradePower:[0.1/M.sC,0.15/M.sC],
 				statStr:loc('wrath cookie duration'),
 			},
 			'wrathCookieEffDur':{
-				weight:0.5,
+				weight:0.1,
 				upgradeWeight:[0.5,1],
 				upgradePower:[0.05/M.sC,0.075/M.sC],
 				statStr:loc('wrath cookie effect duration'),
@@ -238,13 +275,13 @@ M.launch = function(){
 				statStr:loc('reindeer duration'),
 			},
 			'itemDrops':{
-				weight:1,
+				weight:0.5,
 				upgradeWeight:[0.5,1],
-				upgradePower:[0.2/M.sC,0.4/M.sC],
+				upgradePower:[0.2/M.sC,0.3/M.sC],
 				statStr:loc('item drops'),
 			},
 			'wrinklerSpawn':{
-				weight:1,
+				weight:0.5,
 				upgradeWeight:[0.5,1],
 				upgradePower:[0.1/M.sC,0.15/M.sC],
 				statStr:loc('wrinkler spawn rate'),
@@ -270,7 +307,7 @@ M.launch = function(){
 			'prestigeLevelCps':{
 				weight:0.5,
 				upgradeWeight:[0.5,1],
-				upgradePower:[0.1/M.sC,0.15/M.sC],
+				upgradePower:[0.05/M.sC,0.075/M.sC],
 				statStr:loc('prestige level effect on CpS'),
 			},
 			'shimmeringVeilBoost':{
@@ -309,6 +346,13 @@ M.launch = function(){
 				upgradePower:[-0.01/M.sC,-0.015/M.sC],
 				statStr:loc('building cost'),
 			},
+			'vatsNewClonePotential':{
+				weight:0.1,
+				upgradeWeight:[0.5,1],
+				upgradePower:[0.05/M.sC,0.075/M.sC],
+				type:'affectsClones',
+				statStr:loc('synthesized clone potential'),
+			},
 		};
 
 		for (var i in M.buildingList) {
@@ -329,111 +373,83 @@ M.launch = function(){
 		};
 
 		M.personalities = {
-			'aspirational':{
-				name:'Aspirational', // Name
-				weight:0.1, // Weight it'll be chosen for the personality
-				favouredStats:{'cps':[1,1], 'click':[0.5, 0.75], "milk":[0.01,0.05]}, // Base stats, % chance it'll be a base stat at min / max potential
-			},
-			'jolly':{
-				name:'Jolly',
-				weight:0.1,
-				favouredStats:{'cps':[1,1], 'reindeerGain':[1,1], "reindeerDur":[0.5,0.75], 'reindeerFreq':[0.1, 0.2]},
-			},
-			'creative':{
-				name:'Creative',
-				weight:0.1,
-				favouredStats:{'buildingCps':[1,1], 'itemDrops':[0.5, 0.75]},
-			},
 			'fidgety':{
-				name:'Fidgety',
-				weight:0.05,
-				sacLike:'Cursor',
-				favouredStats:{'cursorCps':[1,1], 'cursorCost':[0.5, 0.6], "click":[0.5,0.8]},
-				quote:'They\'re unable to sit still without having something to fiddle with in their unconscious attempts to relieve stress.',
+				name:'Fidgety', // Name
+				weight:0.05, // Weight it'll be chosen for the personality
+				sacLike:'Cursor',  // Sacrificing buildings of this type increase its chance to be chosen
+				favouredStats:{'cursorCps':[1,1], 'cursorCost':[0.5, 0.6], "click":[0.1,0.2]}, // Base stats, % chance it'll be a base stat at min / max potential
 			},
 			'senile':{
 				name:'Senile',
 				weight:0.05,
 				sacLike:'Grandma',
 				favouredStats:{'grandmaCps':[1,1], 'grandmaCost':[0.5, 0.6], "wrinklerEat":[0.1, 0.2]},
-				quote:'Emotionally speaking, they\'re going through the autumnal years of their life - some of us age faster than others.',
 			},
 			'peaceful':{
 				name:'Peaceful',
 				weight:0.05,
 				sacLike:'Farm',
 				favouredStats:{'farmCps':[1,1], 'farmCost':[0.5, 0.6], 'sugarLumpGrowth':[0.1, 0.2]},
-				quote:'Their ideal afternoon is spent residing in the quite soundscapes of the countryside.',
 			},
 			'withdrawn':{
 				name:'Withdrawn',
 				weight:0.05,
 				sacLike:'Mine',
 				favouredStats:{'mineCps':[1,1], 'mineCost':[0.5, 0.6], 'buildingCost':[0.1, 0.2]},
-				quote:'They don\'t see much point in going out when everyone they can talk to is an identical clone of them.',
 			},
 			'inquisitive':{
 				name:'Inquisitive',
 				weight:0.05,
 				sacLike:'Factory',
 				favouredStats:{'factoryCps':[1,1], 'factoryCost':[0.5, 0.6], 'upgradeCost':[0.1, 0.2]},
-				quote:'Always eager to dive into a book they\'ve never heard of, every new idea captivates them.',
 			},
 			'slyful':{
 				name:'Slyful',
 				weight:0.05,
 				sacLike:'Bank',
 				favouredStats:{'bankCps':[1,1], 'bankCost':[0.5, 0.6], 'wrathCookieEffDur':[0.1, 0.2]},
-				quote:'They\'re a terrible penny-pincher, they\'ll use every con in the book to wrangle money out of someone.',
 			},
 			'idolatrous ':{
 				name:'Idolatrous',
 				weight:0.05,
 				sacLike:'Temple',
 				favouredStats:{'templeCps':[1,1], 'templeCost':[0.5, 0.6], 'goldenCookieFreq':[0.1, 0.2]},
-				quote:'They\'ve chosen to dedicate their life to the cookie gods. It brings them some peace of mind.',
 			},
 			'spiritual':{
 				name:'Spiritual',
 				weight:0.05,
 				sacLike:'Wizard tower',
 				favouredStats:{'wizard towerCps':[1,1], 'wizard towerCost':[0.5, 0.6], 'prestigeLevelCps':[0.1, 0.2]},
-				quote:'Auras, crystals, mana circles - the whole lot, they\'re into it.',
 			},
 			'worldly':{
 				name:'Worldly',
 				weight:0.05,
 				sacLike:'Shipment',
 				favouredStats:{'shipmentCps':[1,1], 'shipmentCost':[0.5, 0.6], 'dragonAura':[0.1, 0.2]},
-				quote:'They love to travel and experience new cultures, staying in one place isn\'t for them.',
 			},
 			'inattentive':{
 				name:'Inattentive',
 				weight:0.05,
 				sacLike:'Alchemy lab',
 				favouredStats:{'alchemy labCps':[1,1], 'alchemy labCost':[0.5, 0.6], 'milk':[0.1, 0.2]},
-				quote:'They have trouble focusing on one thing before a new thought enters their mind.',
 			},
 			'eccentric':{
 				name:'Eccentric',
 				weight:0.05,
 				sacLike:'Portal',
 				favouredStats:{'portalCps':[1,1], 'portalCost':[0.5, 0.6], 'wrathCookieDur':[0.1, 0.2]},
-				quote:'Despite being a clone, they do stand out quite a bit with some of their life choices.',
 			},
 			'nostalgic':{
 				name:'Nostalgic',
 				weight:0.05,
 				sacLike:'Time machine',
 				favouredStats:{'time machineCps':[1,1], 'time machineCost':[0.5, 0.6], 'goldenCookieEffDur':[0.1, 0.2]},
-				quote:'Always dreaming of their younger days - surrounded by lab equipment and gene arrays.',
 			},
 			'apathetic':{
 				name:'Apathetic',
 				weight:0.05,
 				sacLike:'Antimatter condenser',
 				favouredStats:{'antimatter condenserCps':[1,1], 'antimatter condenserCost':[0.5, 0.6], 'wrathCookieFreq':[0.1, 0.2]},
-				quote:'They couldn\'t care less about cookie baking.',
 			},
 			'enlightened':{
 				name:'Enlightened',
@@ -475,24 +491,22 @@ M.launch = function(){
 				name:'Egotistical',
 				weight:0.05,
 				sacLike:'You',
-				favouredStats:{'youCps':[1,1], 'youCost':[0.5, 0.6], 'cps':[0.5, 0.8]},
+				favouredStats:{'youCps':[1,1], 'youCost':[0.5, 0.6], 'cps':[0.1, 0.2]},
 			},
 		};
 
+		for (var i in M.personalities) {
+			M.stats['vats'+i+'Attract'] = {
+				weight:0.05,
+				upgradeWeight:[0.5,1],
+				upgradePower:[5/M.sC,7.5/M.sC],
+				type:'affectsClones',
+				statStr:loc('synthesized clone '+M.personalities[i].name.toLocaleLowerCase()+' chance'),
+			};
+			M.commissionsCompleted[i] = 0;
+		};
+
 		M.therapies = {
-			'cryo':{
-				id:'cryo',
-				name:'Cyro Preservation',
-				icon:[5,1],
-				cpsCostPerTick:5,
-				youRequirement:0,
-				canBePickedUp:1,
-				effStr:'<div class="gray">&bull; Freezes clone aging.</div>',
-				passiveFunc:function(clone) { // Runs every tick
-					clone.age = Math.max(clone.age - 1, M.ageBrackets[clone.ageBracket()]);
-				},
-				quote:'Reduces vat temperature to a point where life ceases to move.',
-			},
 			'growth':{
 				id:'growth',
 				name:'Growth Enhancment',
@@ -500,7 +514,7 @@ M.launch = function(){
 				cpsCostPerTick:20,
 				youRequirement:50,
 				canBePickedUp:1,
-				effStr:'<div class="green">&bull; Increases chance of favoured genes.</div><div class="green">&bull; Increases upgrade power by 1%/tick.</div>',
+				effStr:'<div class="green">&bull; Increases chance of favoured genes.</div><div class="green">&bull; Increases upgrade power by 0.01/tick.</div>',
 				passiveFunc:function(clone) { // Runs every tick
 					clone.upgradePower += 0.01
 
@@ -520,9 +534,9 @@ M.launch = function(){
 				cpsCostPerTick:30,
 				youRequirement:100,
 				canBePickedUp:1,
-				effStr:'<div class="green">&bull; Increases upgrade rolls by 0.1/tick.</div><div class="red">&bull; Lowers upgrade power by 0.5%/tick.</div>',
+				effStr:'<div class="green">&bull; Increases upgrade rolls by 0.05/tick.</div><div class="red">&bull; Lowers upgrade power by 0.005/tick.</div>',
 				passiveFunc:function(clone) { // Runs every tick
-					clone.upgradeRolls += 0.1;
+					clone.upgradeRolls += 0.05;
 					clone.upgradePower = Math.max(M.upgradePowerMin, clone.upgradePower - 0.005);
 				},
 				quote:'Soft sound waves are emitted throughout the vat, encouraging taking new opportunities when they arise.'
@@ -532,9 +546,9 @@ M.launch = function(){
 				name:'Sucrose Infusion',
 				icon:[2,1],
 				cpsCostPerTick:40,
-				youRequirement:150,
+				youRequirement:200,
 				canBePickedUp:1,
-				effStr:'<div class="green">&bull; Randomizes upgrade chances dramatically depending on time.</div><div class="green">&bull; Increases upgrade power by 1%/tick.</div><div class="red">&bull; Lowers upgrade rolls by 0.025/tick.</div>',
+				effStr:'<div class="green">&bull; Randomizes upgrade chances dramatically depending on time.</div><div class="green">&bull; Increases upgrade power by 0.01/tick.</div><div class="red">&bull; Lowers upgrade rolls by 0.025/tick.</div>',
 				passiveFunc:function(clone) { // Runs every tick
 					clone.upgradePower += 0.01;
 					clone.upgradeRolls = Math.max(M.upgradeRollsMin, clone.upgradeRolls - 0.025);
@@ -566,7 +580,7 @@ M.launch = function(){
 				name:'Nebulous Rearrangement',
 				icon:[3,1],
 				cpsCostPerTick:20,
-				youRequirement:200,
+				youRequirement:300,
 				canBePickedUp:1,
 				effStr:'<div class="gray">&bull; Equalizes upgrade chances.</div><div class="green">&bull; Increases upgrade rolls by 0.075/tick.</div>',
 				passiveFunc:function(clone) { // Runs every tick
@@ -586,9 +600,9 @@ M.launch = function(){
 				name:'Nucleatic Augmentation',
 				icon:[4,1],
 				cpsCostPerTick:40,
-				youRequirement:250,
+				youRequirement:400,
 				canBePickedUp:1,
-				effStr:'<div class="green">&bull; Singles out one gene and greatly increases its chance.</div><div class="green">&bull; Increases upgrade power by 3%/tick.</div><div class="red">&bull; Lowers upgrade rolls by 0.075/tick.</div>',
+				effStr:'<div class="green">&bull; Singles out one gene per age group and greatly increases its chance.</div><div class="green">&bull; Increases upgrade power by 0.03/tick.</div><div class="red">&bull; Lowers upgrade rolls by 0.075/tick.</div>',
 				passiveFunc:function(clone) { // Runs every tick
 					clone.upgradePower += 0.03;
 					clone.upgradeRolls = Math.max(M.upgradeRollsMin, clone.upgradeRolls - 0.075);
@@ -606,6 +620,19 @@ M.launch = function(){
 					clone.stats[randomStat].weight += 0.2;
 				},
 				quote:'Searches and adjusts specific nucleotide sets to maximise their effect.',
+			},
+			'cryo':{
+				id:'cryo',
+				name:'Cyro Preservation',
+				icon:[5,1],
+				cpsCostPerTick:5,
+				youRequirement:500,
+				canBePickedUp:1,
+				effStr:'<div class="gray">&bull; Freezes clone aging.</div>',
+				passiveFunc:function(clone) { // Runs every tick
+					clone.age = Math.max(clone.age - 1, M.ageBrackets[clone.ageBracket()]);
+				},
+				quote:'Reduces vat temperature to a point where life ceases to move.',
 			},
 		};
 
@@ -633,127 +660,111 @@ M.launch = function(){
 
 		M.computeEffs=function()
 		{
-			M.toCompute=false;
+			M.toCompute=0;
 
 			var effs={};
-			for (var i in M.youStats) {
-				M.calculateStatValues(M.youStats[i].stats, M.youStats[i].potential, M.youStats[i].personality);
-				for (var ii in M.youStats[i].stats) {
-					var stat = M.youStats[i].stats[ii];
-					if (effs[ii]) {
-						effs[ii] += stat.power * M.youStats[i].mult;
-					} else { 
-						effs[ii] = 1+(stat.power * M.youStats[i].mult);
-					};
+			var primeVat = M.vats['primeVat'];
+			var primeClone = primeVat.holds;
+			
+			if (primeClone) {
+				M.calculateStatValues(primeClone.stats, primeClone.potential, primeClone.personality);
+				for (var i in primeClone.stats) {
+					var stat = primeClone.stats[i];
+					effs[i] = 1+(stat.power * M.parent.amount);
 				};
+			};
+
+			for (var i in M.commissionsCompleted) {
+				var value = M.getCommissionsCurve(M.commissionsCompleted[i]);
+				effs['vats'+i+'favouredGeneBonus'] = 1+value;
 			};
 
 			M.effs=effs;
 			Game.recalculateGains=1;
-		};
-		
-		M.primeVatCooldown = 0;
-		M.buildingPurchased = function() {
-			var primeVat = M.vats['primeVat'];
-			var rect=primeVat.l.getBounds();
-			var primeClone = primeVat.holds;
-			var youNumber = String(M.parent.amount);
-			var stats = {};
-
-			var latestYou = 0;
-			var greatestYou = -1;
-			for (var i in M.youStats) {
-				if (Number(i) > greatestYou) {
-					greatestYou = Number(i);
-				};
-			};
-
-			latestYou = greatestYou!=-1?M.youStats[String(greatestYou)]:0;
-
-			if (primeClone) {
-				for (var i in primeClone.stats) {
-					stats[i] = {};
-					stats[i].upgradeHits = primeClone.stats[i].upgradeHits;
-					stats[i].negative = primeClone.stats[i].negative;
-					stats[i].power = 0;
-				};
-
-				if (M.primeVatCooldown==0) {
-					Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
-					PlaySound('snd/shimmerClick.mp3');
-					M.primeVatCooldown ++;
-
-					setTimeout(function() {
-						M.primeVatCooldown --;
-					},100);
-				};
-				
-				M.calculateStatValues(stats, primeClone.potential, primeClone.personality);
-			};
-
-			
-			// If the last you bought has the same stats as this one, just increase it's mult to save space
-			if (latestYou && JSON.stringify(latestYou.stats) == JSON.stringify(stats)) {
-				latestYou.mult++;
-			} else if (primeClone) {
-				M.youStats[youNumber] = {};
-				M.youStats[youNumber].stats = stats;
-				M.youStats[youNumber].copiedCloneName = primeClone.name;
-				M.youStats[youNumber].potential = primeClone.potential;
-				M.youStats[youNumber].personality = primeClone.personality;
-				M.youStats[youNumber].mult = 1;
-			} else { // Nothing in the prime vat case
-				M.youStats[youNumber] = {};
-				M.youStats[youNumber].stats = {};
-				M.youStats[youNumber].copiedCloneName = 0;
-				M.youStats[youNumber].potential = 0;
-				M.youStats[youNumber].personality = 0;
-				M.youStats[youNumber].mult = 1;
-			};
-			
-			M.toCompute = true;			
-		};
-
-		M.buildingSold  = function() {
-			var primeVat = M.vats['primeVat'];
-			var rect=primeVat.l.getBounds();
-			var latestYou = 0;
-			var greatestYou = -1;
-
-			for (var i in M.youStats) {
-				if (Number(i) > greatestYou) {
-					greatestYou = Number(i);
-				};
-			};
-			
-			latestYou = greatestYou!=-1?M.youStats[String(greatestYou)]:0;
-
-			if (latestYou) {
-				if (latestYou.mult > 1) {
-					latestYou.mult --;
-				} else {
-					delete(M.youStats[String(greatestYou)]);
-				};
-
-				if (M.primeVatCooldown==0) {
-					Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
-					PlaySound('snd/spellFail.mp3', 0.35);
-					M.primeVatCooldown ++;
-
-					setTimeout(function() {
-						M.primeVatCooldown --;
-					},100);
-				};
-			};
-			M.toCompute = true;
 		};
 
 		M.canAfford = function(cost)
 		{
 			if (Game.cookies>=cost) return true; else return false;
 		};
+
+		M.updateUnlockInfo = function() {
+			var synthesizerVat = M.vats['synthesizerVat'];
+			var combinerVat = M.vats['combinerOutputVat'];
+			var rightPanel = l('vatsRightPanel');
+			var sacPanel = l('vatsSacrificePanel');
+			var commissionsPanel = l('vatsCommissionsPanel');
+			var unlocksUnlocked = -1;
+			for (var i in M.unlockTiers) {
+				if (M.clonesN >= M.unlockTiers[i][0]) {
+					var upgradeName = M.unlockTiers[i][1];
+					unlocksUnlocked++;
+					if (!Game.Has(upgradeName))
+					{
+						Game.Unlock(upgradeName);
+					};
+				};
+			};
+
+			// All aboard the if else train!
+			if (Game.Has('Synthesizer Mk IV')) {
+				synthesizerVat.name = 'Synthesizer Vat Mk IV';
+			} else if (Game.Has('Synthesizer Mk III')) {
+				synthesizerVat.name = 'Synthesizer Vat Mk III';
+			} else if (Game.Has('Synthesizer Mk II')) {
+				synthesizerVat.name = 'Synthesizer Vat Mk II';
+			} else {
+				synthesizerVat.name = 'Synthesizer Vat Mk I';
+			};
+
+			if (Game.Has('Combiner Mk IV')) {
+				combinerVat.name = 'Combiner Vat Mk IV';
+			} else if (Game.Has('Combiner Mk III')) {
+				combinerVat.name = 'Combiner Vat Mk III';
+			} else if (Game.Has('Combiner Mk II')) {
+				combinerVat.name = 'Combiner Vat Mk II';
+			} else {
+				combinerVat.name = 'Combiner Vat Mk I';
+			};
+
+			if (Game.Has('Combiner') && rightPanel.classList.contains('vatsDisabled')) {
+				rightPanel.classList.remove('vatsDisabled');
+			};
+			if (!Game.Has('Combiner') && !rightPanel.classList.contains('vatsDisabled')) {
+				rightPanel.classList.add('vatsDisabled');
+			};
+
+			if (Game.Has('Sacrificing') && sacPanel.classList.contains('vatsDisabled')) {
+				sacPanel.classList.remove('vatsDisabled');
+			};
+			if (!Game.Has('Sacrificing') && !sacPanel.classList.contains('vatsDisabled')) {
+				sacPanel.classList.add('vatsDisabled');
+			};
+
+			var nextUnlock = M.unlockTiers[unlocksUnlocked+1];
+			
+			if (nextUnlock) {							
+				l('vatsNextUnlock').innerHTML = 'Create '+nextUnlock[0]+' clones to unlock the upgrade:<div class="line"></div><b>'+nextUnlock[1];
+				l('vatsNextUnlock').style.display = '';
+				l('vatsCommissionsInterface').style.display = 'none';
+
+				if (commissionsPanel.classList.contains('vatsDisabled')) {
+					commissionsPanel.classList.remove('vatsDisabled');
+				};
+			} else { // Show commission panel if all unlocks are unlocked
+				l('vatsNextUnlock').style.display = 'none';
+				l('vatsCommissionsInterface').style.display = '';
+
+				if (Game.Has('Contractor Clones') && commissionsPanel.classList.contains('vatsDisabled')) {
+					commissionsPanel.classList.remove('vatsDisabled');
+				};
+				if (!Game.Has('Contractor Clones') && !commissionsPanel.classList.contains('vatsDisabled')) {
+					commissionsPanel.classList.add('vatsDisabled');
+				};
+			};
+		};
 		
-		M.clone = function(name, where, personality, potential, age, upgradePower, upgradeRolls, stats, therapy, therapyDurRemaining, canBePickedUp, id, fromLoad)
+		M.clone = function(name, where, personality, potential, age, upgradePower, upgradeRolls, fusionsLeft, stats, therapy, therapyDurRemaining, canBePickedUp, id, fromLoad)
 		{	
 			var vat = M.vats[where];
 			if (!vat || vat.holds) {console.log('Attempted to make a clone in occupied '+ where); return}
@@ -761,10 +772,11 @@ M.launch = function(){
 			this.id = id || M.clonesN;
 			this.name = name; //str
 			this.personality = personality || 'fidgety'; //str
-			this.age = age || 0; //num, in ticks
-			this.potential = potential || 0.5; //num
-			this.upgradePower = upgradePower || M.baseUpgradePower; //num, default of 1
-			this.upgradeRolls = upgradeRolls || M.baseUpgradeRolls; //num, default of 5, round down when rolling
+			this.age = age!=undefined?age:0; //num, in ticks
+			this.potential = potential!=undefined?potential:0.5; //num
+			this.upgradePower = upgradePower!=undefined?upgradePower:M.baseUpgradePower; //num, default of 1
+			this.upgradeRolls = upgradeRolls!=undefined?upgradeRolls:M.baseUpgradeRolls; //num, default of 5, round down when rolling
+			this.fusionsLeft = fusionsLeft!=undefined?fusionsLeft:M.baseFusionsLeft; // num, default of 2
 			this.stats = stats || {}; //eg: cps:{power:1, weight:0.125} -- this equal +1% cps, with an upgradeWeight of 0.125, stats at 0 power are hidden
 			this.therapy = therapy!=undefined?therapy:0; //str or 0
 			this.therapyDurRemaining = therapyDurRemaining!=undefined?therapyDurRemaining:-1; //num, in ticks
@@ -803,6 +815,11 @@ M.launch = function(){
 				M.creationNum++;
 			};
 			M.lastClone = this;
+
+			if (M.clonesN >= 1) Game.Win('I think I\'m a clone now');
+			if (M.clonesN >= 50) Game.Win('Two\'s a party but 50 is a crowd');
+			if (M.clonesN >= 500) Game.Win('Be the best You');
+			 
 			return this;
 		};
 
@@ -824,7 +841,7 @@ M.launch = function(){
 				text=[
 					text,
 					'$ '+romanize(M.clonesN+2)+(Math.random()<0.05?choose(['[C] Jr.','[C] Esq.','[C] Etc.',', Cont\'d','[C] and so forth']):''),
-					choose([choose(['Lil\' $','Mini-$','$ '+(M.clonesN+2),'Attempt '+(M.clonesN+1),'Experiment '+(M.clonesN+1),'Not $','$, again','$, the sequel','$ '+(M.clonesN+2)+' Electric Boogaloo','Also $','$ (remixed)','The Other $','$, The Next Generation','$, part '+romanize(M.clonesN+2),'Revenge of $','The Return of $','$ reborn','$ in the flesh']),'$ "'+choose(['The Menace','The Artisan','The Relative','The Twin','The Specialist','The Officer','The Snitch','The Simpleton','The Genius','The Conformist','The Mistake','The Accident','Lab-grown','Vat Kid','Photocopy','Cloney','Ditto','Accounted For','Twitchy','Wacky','Zen','Rinse & Repeat','Spitting Image','Passing Resemblance','Nickname','Make It So','Deja-vu','Cookie','Clicky','Orteil','But Better','Guess Who','Transplant Fodder','Furthermore','One More Thing','Liquid','Second Chance','Offspring','Mulligan','Spare Parts'])+'" McClone']),
+					choose([choose(['Lil\' $','Mini-$','$ '+(M.clonesN+2),'Attempt '+(M.clonesN+1),'Experiment '+(M.clonesN+1),'Not $','$[C] again','$[C] the sequel','$ '+(M.clonesN+2)+' Electric Boogaloo','Also $','$ (remixed)','The Other $','$[C] The Next Generation','$[C] part '+romanize(M.clonesN+2),'Revenge of $','The Return of $','$ reborn','$ in the flesh']),'$ "'+choose(['The Menace','The Artisan','The Relative','The Twin','The Specialist','The Officer','The Snitch','The Simpleton','The Genius','The Conformist','The Mistake','The Accident','Lab-grown','Vat Kid','Photocopy','Cloney','Ditto','Accounted For','Twitchy','Wacky','Zen','Rinse & Repeat','Spitting Image','Passing Resemblance','Nickname','Make It So','Deja-vu','Cookie','Clicky','Orteil','But Better','Guess Who','Transplant Fodder','Furthermore','One More Thing','Liquid','Second Chance','Offspring','Mulligan','Spare Parts'])+'" McClone']),
 				][cloneTitle];
 			};
 			return text
@@ -838,13 +855,24 @@ M.launch = function(){
 			return M.getFavouredStats(personality)[stat];
 		};
 
+		M.getCloneFavouredGeneBonus = function(personality) {
+			return M.favouredPowerMult * Game.eff('vats'+personality+'favouredGeneBonus') * (Game.HasAchiev('Plundering paper pirates')?M.pppFavouredPowerMult:1);;
+		};
+
 		M.calculateStatValues = function(stats, potential, personality) {
+			var negativeNum = 0;
+			var geneNum = 0;
+
 			for (var i in stats) {
-				stats[i].power = stats[i].upgradeHits * (M.isStatFavoured(personality, i)?M.favouredPowerMult:1) * ((stats[i].negative)?-1:1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
-				if (stats[i].power > 1) { // Cunk over stats that surpass 1% because that would be ludicrous
-					stats[i].power = (stats[i].power-1)/10 + 1;
+				stats[i].power = stats[i].upgradeHits * ((stats[i].negative)?-1:1) * (M.isStatFavoured(personality, i)?M.getCloneFavouredGeneBonus(personality):1) * M.linearTransformTable(M.stats[i].upgradePower, potential);
+				geneNum++;
+				if (stats[i].negative) {
+					negativeNum ++;
 				};
 			};
+
+			if (geneNum >= 1 && negativeNum==geneNum) Game.Win('Weakest link');
+			if (geneNum>=12) Game.Win('Not-so-specialized cells');
 		};
 
 		M.upgradeStat = function(clone, stat, hits, negative) {
@@ -856,9 +884,9 @@ M.launch = function(){
 			if (stat && !clone.stats[stat]) {
 				clone.stats[stat] = {};
 				clone.stats[stat].negative = (negative!=undefined?negative:(!isFavoured && Math.random() < M.linearTransformTable(M.baseStatNegativeChance, clone.potential)));
-				clone.stats[stat].weight = (isFavoured?M.favouredWeightMult:1)*(M.linearTransformTable(M.stats[stat].upgradeWeight, clone.potential));
+				clone.stats[stat].weight = (isFavoured?M.favouredWeightMult:1)*M.linearTransformTable(M.stats[stat].upgradeWeight, clone.potential);
 				clone.stats[stat].power = 0;
-				clone.stats[stat].upgradeHits = hits-1;
+				clone.stats[stat].upgradeHits = hits==1?0:hits;
 			} else if (stat) {
 				clone.stats[stat].upgradeHits += clone.upgradePower * hits;
 				clone.stats[stat].negative = negative==undefined?clone.stats[stat].negative:(clone.stats[stat].negative && negative)
@@ -877,14 +905,23 @@ M.launch = function(){
 			};
 
 			// Roll for bonus base stats
-			var bonusBaseStatChance = (1-clone.potential); // Lower potential = more bonus base stats, idea is potential is their potential in their personality
+			var bonusBaseStatChance = (M.bonusBaseStatStartingChance-clone.potential); // Lower potential = more bonus base stats, idea is potential is their potential in their personality
 			for (var i = 0; (Math.random() <= bonusBaseStatChance || i<M.bonusBaseStatsMin) && i<=100; i++) {
-				var randomStat = M.weightedRandom(M.stats);
+				var statList = [];
+
+				for (var ii in M.stats) {
+					var statWeight = M.stats[ii].weight;
+					if (i<M.bonusBaseStatsMin && M.stats[ii].type=='affectsClones') {
+						statWeight *= M.affectsClonesFirstWeightMult;
+					};
+					statList[ii] = {weight: statWeight};
+				};
+
+				var randomStat = M.weightedRandom(statList);
 				
 				M.upgradeStat(clone, randomStat);
 				
 				if (i>=M.bonusBaseStatsMin) {
-					
 					bonusBaseStatChance *= M.bonusBaseStatMod;
 				};
 			};
@@ -892,7 +929,7 @@ M.launch = function(){
 
 		M.rollForStatUpgrades = function(clone)
 		{	
-			var rollNum = Math.max(M.upgradeRollsMin, Math.floor(clone.upgradeRolls));
+			var rollNum = Math.max(M.upgradeRollsMin, randomFloor(clone.upgradeRolls));
 
 			for (var roll = 1; roll<=rollNum; roll++) {
 				var randomStat = M.weightedRandom(clone.stats);
@@ -902,21 +939,33 @@ M.launch = function(){
 			};
 		};
 
+		M.getCombinerMaxTime = function() {
+			var num = 20;
+			if (Game.Has('Combiner Mk II')) num+=2*20;
+			if (Game.Has('Combiner Mk III')) num+=3*20;
+			if (Game.Has('Combiner Mk IV')) num+=6*20;
+			return num;
+		};
+
 		M.getCombineDestroyChance = function(ticks) {
 			ticks = Math.max(ticks-1, 0);
-			var modifier = (M.combinerDestroyChanceLevelMod + 1) - ((M.combinerDestroyChanceLevelMod*(M.parent.level-1))/M.parent.level);
+			var effectiveLevel = M.parent.level + Game.auraMult('Supreme Intellect')
+			var modifier = (M.combinerDestroyChanceLevelMod + 1) - ((M.combinerDestroyChanceLevelMod*(effectiveLevel-1))/effectiveLevel);
 			var offset = modifier/(M.combinerDestroyChanceMax-M.combinerDestroyChanceMin);
 			return (modifier/(ticks+offset)) + M.combinerDestroyChanceMin;
 		};
 
-		M.combineClones = function(clone1, clone2, destroyChance) {	
+		M.combineClones = function(clone1, clone2, totalTicks) {	
+			var destroyChance = M.getCombineDestroyChance(totalTicks);
 			var newName = M.mangleSentences([clone1.name, clone2.name]);
 			var newPersonality = choose([clone1.personality, clone2.personality]);
 			var newPotential = M.linearTransformTable([clone1.potential, clone2.potential], Math.random());
 			var combinedGenes = {};
+			var doubleUps = [];
 			var totalGenes = 0;
 			
 			new M.clone(newName, 'combinerOutputVat', newPersonality, newPotential, M.ageBrackets[4]);
+			M.lastClone.fusionsLeft = Math.min(clone1.fusionsLeft, clone2.fusionsLeft) - 1;
 
 			for (var i in clone1.stats) {
 				var stat = clone1.stats[i];
@@ -930,11 +979,30 @@ M.launch = function(){
 			};
 
 			for (var i in combinedGenes) {
-				var chosenStat = i;
-				var stat = combinedGenes[chosenStat];
+				var stat = combinedGenes[i];
 				if (Math.random() >= destroyChance) {
-					M.upgradeStat(M.lastClone, chosenStat.replace('_2', ''), stat.upgradeHits+1, stat.negative);
+					if (M.lastClone.stats[i.replace('_2', '')]) {
+						doubleUps.push(i.replace('_2', ''));
+					};
+					M.upgradeStat(M.lastClone, i.replace('_2', ''), stat.upgradeHits, stat.negative);
 				};
+			};
+
+			for (var i in M.lastClone.stats) {
+				var stat = M.lastClone.stats[i];
+				if (doubleUps.includes(i)) {
+					stat.upgradeHits *= M.combinerDoubleGenePenalty;
+				} else {
+					stat.upgradeHits *= M.combinerGenePenalty;
+				};
+			};
+
+			if (totalTicks >= 20*6 && Game.Has('Combiner Mk III') && Math.random()<=(0.1*(Game.HasAchiev('Plundering paper pirates')?M.pppChanceMult:1))) {
+				M.lastClone.potential = Math.min(M.maxPotential, M.lastClone.potential*1.05);
+			};
+			
+			if (totalTicks >= 20*12 && Game.Has('Combiner Mk IV') && Math.random()<=0.05*(Game.HasAchiev('Plundering paper pirates')?M.pppChanceMult:1)) {
+				M.lastClone.fusionsLeft += 1;
 			};
 
 			M.destroyClone(clone1);
@@ -964,22 +1032,21 @@ M.launch = function(){
 
 		M.endCombiner = function(success) {
 			var outputVat = M.vats['combinerOutputVat'];
-			var destroyChance = M.getCombineDestroyChance(M.combinerTotalTicks);
 			var clone1 = M.vats['combinerVat1'].holds;
 			var clone2 = M.vats['combinerVat2'].holds;
 			clone1.canBePickedUp = 1;
 			clone2.canBePickedUp = 1;
 
-			M.combinerTicksRemaining = 0;
-			M.combinerTotalTicks = -1;
-
 			if (success) {
-				M.combineClones(clone1, clone2, destroyChance);
+				M.combineClones(clone1, clone2, M.combinerTotalTicks);
 			} else {
 				var rect = outputVat.l.getBounds();
 				Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
 				PlaySound('snd/spellFail.mp3', 0.5);
 			};
+
+			M.combinerTicksRemaining = 0;
+			M.combinerTotalTicks = -1;
 		};
 
 		M.sacButtonHovered=-1;
@@ -1013,9 +1080,17 @@ M.launch = function(){
 			return Math.round(totalSacPower*1000)/1000;
 		};
 
+		M.getSynthesizerMaxTime = function() {
+			var num = 20;
+			if (Game.Has('Synthesizer Mk II')) num+=2*20;
+			if (Game.Has('Synthesizer Mk III')) num+=3*20;
+			if (Game.Has('Synthesizer Mk IV')) num+=6*20;
+			return num;
+		};
+
 		M.getSynthesizeMinPotential = function(ticks, sacrificePower) {
 			ticks = Math.max(ticks-1, 0);
-			var effectiveLevel = M.parent.level + (sacrificePower*M.synthesizerMinPotentialSacrificePowerLevelEquivalent);
+			var effectiveLevel = M.parent.level + (sacrificePower*M.synthesizerMinPotentialSacrificePowerLevelEquivalent) + Game.auraMult('Supreme Intellect');
 			var modifier = (M.synthesizerMinPotentialLevelMod + 1) - ((M.synthesizerMinPotentialLevelMod*(effectiveLevel-1))/effectiveLevel);
 			var offset = modifier/(M.synthesizerMinPotentialMax-M.synthesizerMinPotentialMin);
 			return (modifier/(-ticks-offset)) + M.synthesizerMinPotentialMax;
@@ -1048,8 +1123,7 @@ M.launch = function(){
 			if (success) {
 				var minPotential = M.getSynthesizeMinPotential(M.synthesizerDuration, M.getTotalSacPower(M.synthesizerSacPool));
 				var newClone = new M.clone(M.getRandomCloneName(), 'synthesizerVat');
-				var potentialMod = 2;
-				var potential = Math.pow(Math.random()*Math.pow(1-minPotential,1/potentialMod), potentialMod) + minPotential;
+				var potential = minPotential + (M.softMaxPotential * Math.pow(Math.random()*Math.pow(1-(minPotential/M.softMaxPotential),1/M.synthesizerPotentialMod), M.synthesizerPotentialMod)); // Soft max potential is useless but it's the thought that counts
 				var personalityList = {};
 
 				for (var personality in M.personalities) {
@@ -1058,12 +1132,22 @@ M.launch = function(){
 					var sacNum = M.synthesizerSacPool[sacLike]?M.synthesizerSacPool[sacLike]:0
 					var buildingFavour = M.linearTransformNumber(1, M.sacLikeWeightMult, (sacNum/M.sacMax));
 					personalityList[personality] = {};
-					personalityList[personality].weight = personalityData.weight * buildingFavour;
+					personalityList[personality].weight = Math.max(0, personalityData.weight * buildingFavour * Game.eff('vats'+personality+'Attract'));
 				}
 				
 				newClone.personality = M.weightedRandom(personalityList);
-				newClone.potential = potential;
+				newClone.potential = Math.min(M.maxPotential, potential * Game.eff('vatsNewClonePotential'));
 				M.rollForBaseStats(newClone);
+
+				if (M.synthesizerDuration >= 20*6 && Game.Has('Synthesizer Mk III') && Math.random()<=(0.1*(Game.HasAchiev('Plundering paper pirates')?M.pppChanceMult:1))) {
+					M.lastClone.upgradeRolls += 1;
+				};
+
+				if (M.synthesizerDuration >= 20*12 && Game.Has('Synthesizer Mk IV') && Math.random()<=(0.05*(Game.HasAchiev('Plundering paper pirates')?M.pppChanceMult:1))) {
+					for (var i in M.lastClone.stats) {
+						M.upgradeStat(M.lastClone, i);
+					};
+				};
 
 				PlaySound('snd/shimmerClick.mp3');
 			} else {
@@ -1103,6 +1187,139 @@ M.launch = function(){
 			clone.therapyDurRemaining = -1;
 		};
 
+		M.getCommissionsCurve = function(completed) {
+			var offset = M.commissionsCurveMod/(M.commissionsCurveMax-M.commissionsCurveMin);
+			return (M.commissionsCurveMod/(-completed-offset)) + M.commissionsCurveMax;
+		};
+
+		M.getCommissionsRequiredPower = function(completed) {
+			return randomFloor(M.commissionsAppliedPowerBase + (M.commissionsAppliedPowerPerCurve * M.getCommissionsCurve(completed)));
+		};
+
+		M.getCommissionsSkipCost = function(skipped) {
+			return Game.cookiesPsRawHighest * (skipped+1) * M.commissionsSkipCpsCostPerSkip;
+		};
+
+		M.getCommissionsLumps = function() {
+			var completeSets = 1000;
+			for (var i in M.commissionsCompleted) {
+				if (M.commissionsCompleted[i]<completeSets) {
+					completeSets = M.commissionsCompleted[i];
+				};
+			};
+			return Math.floor(M.commissionSacrificeLumpsPerContractSet * completeSets)
+		};
+
+		M.getCommissionsOfferMismatches = function(requestData) {
+			var offeredClone = M.vats['commissionVat'].holds;
+			var mismatches = [];
+
+			if (offeredClone) {
+				if (offeredClone.personality != requestData.personality) {
+					mismatches.push('Offered clone personality ('+M.personalities[offeredClone.personality].name+') does not match requested personality ('+M.personalities[requestData.personality].name+').');
+				};
+				for (var i in requestData.stats) {
+					var requestedStatPower = requestData.stats[i];
+					var stat = offeredClone.stats[i];
+					if (stat) {
+						if (stat.negative) {
+							mismatches.push('Offered clone has requested gene ('+M.stats[i].statStr+') but the gene is a negative.');
+						};
+							
+						if (stat.upgradeHits<requestedStatPower) {
+							mismatches.push('Offered clone has requested gene ('+M.stats[i].statStr+') but the gene applied upgrade value ('+M.coolifyNumber(stat.upgradeHits)+'🗲) does not meet requested gene upgrade power (>'+requestedStatPower+'🗲).');
+						};
+					} else {
+						mismatches.push('Offered clone does not have requested gene ('+M.stats[i].statStr+').');
+					};
+				};
+			} else {
+				mismatches.push('There is no clone in the contract vat.');
+			};
+
+			return mismatches;
+		};
+
+		M.getRandomCommissionsRequest = function() {
+			var randomPersonality = M.weightedRandom(M.personalities);
+			var requiredPower = M.getCommissionsRequiredPower(M.commissionsCompleted[randomPersonality]);
+			var requestData = {personality:randomPersonality, stats:{}};
+			var geneList = {};
+
+			for (var i in M.stats) {
+				var stat = M.stats[i];
+				var statWeight = stat.weight;
+				geneList[i] = {weight:statWeight};
+			};
+			
+			var randomGene = M.weightedRandom(geneList);
+			requestData.stats[randomGene] = requiredPower;
+			return requestData;
+		};
+
+		M.completeCommission = function(completed, requestData) {
+			var commissionVat = M.vats['commissionVat'];
+			var offeredClone = commissionVat.holds;
+			if (completed) {
+				M.commissionsCompleted[requestData.personality]++;
+				if (M.commissionsCompleted[requestData.personality]>=25) Game.Win('Skipping the fine print');
+				M.totalCommissionsCompleted++;
+				if (offeredClone) {
+					M.destroyClone(offeredClone);
+				};
+				M.currentCommission = M.getRandomCommissionsRequest();
+				
+				var rect=commissionVat.l.getBounds();
+				Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
+				PlaySound('snd/giftsend.mp3',0.75);
+			} else {
+				M.commissionsSkipped++;
+				M.currentCommission = M.getRandomCommissionsRequest();
+				
+				var rect=l('vatsCommissionsCurrentRequest').getBounds();
+				Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
+				PlaySound('snd/shimmerClick.mp3');
+			};
+			M.toCompute = 1;
+		};
+
+		M.commissionsSacrifice = function() {
+			var canStart = 1;
+			for (var i in M.personalities) {
+				if (M.commissionsCompleted[i] < M.commissionsSacrificeMin) {
+					canStart = 0;
+				};
+			};
+			if (!canStart) return;
+			Game.gainLumps(M.getCommissionsLumps());
+			Game.Notify('File raid!','Your filing cabinets are raided by lawyers, and they steal the records of all signed clone contracts. In an effort to make room for a manilla folder, they leave behind '+M.getCommissionsLumps()+' sugar lumps which you happily take amidst the data loss.',[29,14],12);
+			
+			M.currentCommission = M.getRandomCommissionsRequest();
+			
+			for (var i in M.commissionsCompleted) M.commissionsCompleted[i] = 0;
+			
+			M.totalCommissionsCompleted = 0;
+			Game.Win('Plundering paper pirates');
+			M.convertTimes++;
+			M.toCompute = 1;
+			PlaySound('snd/spellFail.mp3',0.75);
+		};
+
+		M.getCommissionBox = function(requestData) {
+			var str = '<div class="description">'+
+				'<div style="margin:6px 0px;font-size:11px;"><b>Personality: '+(M.personalities[requestData.personality].name)+' (No. '+(M.commissionsCompleted[requestData.personality]+1)+')</div>'+
+				'<div style="margin:6px 0px;font-size:11px;"><b>Genes:<b/></div>'+
+				'<div class="block description" style="height:14px;">';
+					var geneStr = ''
+					for (var i in requestData.stats) {
+						geneStr+='<div style="font-size:10px;width:200%;" class="green">&bull; '+M.stats[i].statStr+' (>'+requestData.stats[i]+'🗲)</div>'
+					};
+					str+=geneStr+
+				'</div>'+
+			'</div>';
+			return str;
+		};
+
 		M.showBinConfirmPrompt = function(clone) {
 			Game.Prompt('<noClose><id vatsBinConfirm><h3>Destroy clone?</h3><div class="block">'+tinyIcon([4,2,MMMImagePrefix+'/vatsClones.png'])+
 				'<div class="line"></div>'+
@@ -1119,6 +1336,8 @@ M.launch = function(){
 				M.bin.canBePickedUp = 0;
 
 				l('vatsBinIcon').style.backgroundPosition = (-3*48)+'px '+(-2*48)+'px';
+
+				Game.Win('Autoimmune');
 
 				var rect=l('vatsBinHolder').getBounds();
 				Game.SparkleAt((rect.left+rect.right)/2,(rect.top+rect.bottom)/2-24+32-TopBarOffset);
@@ -1154,13 +1373,13 @@ M.launch = function(){
 					};
 
 					if (l('vatsTicksDurationVisual')) {
-						l('vatsTicksDurationVisual').innerHTML = 'Duration: '+ M.getDurStrFromTicks(value) + '.';
+						l('vatsTicksDurationVisual').innerHTML = 'Duration: '+ M.getDurStrFromTicks(value) + '.<br>Max: '+M.getDurStrFromTicks(maxFunc())+'.';
 					};
 
 					if (l('vatsTicksPromptCostBreakdown')) {
 						l('vatsTicksPromptCostBreakdown').innerHTML = M.getDurStrFromTicks(value) +' of '+ name +' costs:<br>'+
 						'<span class="price '+ (M.canAfford(cost)?'':'disabled') +'">'+Beautify(Math.round(shortenNumber(cost)))+'</span><br>'+
-						'<small>'+loc("%1 of CpS",[((value+1)>0)?Game.sayTime((cost/Game.cookiesPs) * Game.fps,-1):'0 seconds'])+'</small>'
+						'<small>'+loc("%1 of CpS",[(value>0)?Game.sayTime((cost/Game.cookiesPs) * Game.fps,-1):'0 seconds'])+'</small>'
 					};
 
 					if (l('promptOption0')) {
@@ -1264,26 +1483,32 @@ M.launch = function(){
 				};
 				// Attributes
 				str+='<div class="description">'+
-					'<div style="margin:6px 0px;font-size:11px;"><b>Personality:</b> '+ M.personalities[clone.personality].name +'</div>'+
-					'<div style="margin:6px 0px;font-size:11px;"><b>Potential:</b> '+ Math.round(clone.potential*100) +'%</div>'+
-					'<div style="margin:6px 0px;font-size:11px;"><b>Upgrade Rolls:</b> '+ Math.floor(clone.upgradeRolls) +'</div>'+
-					'<div style="margin:6px 0px;font-size:11px;"><b>Upgrade Power:</b> '+ Math.round(clone.upgradePower*100) +'%</div>'+
+					'<div style="margin:6px 0px;font-size:11px;"><b>★ Personality:</b> '+ M.personalities[clone.personality].name +' <small>(Favoured gene bonus: x'+M.coolifyNumber(M.getCloneFavouredGeneBonus(clone.personality))+')</small></div>'+
+					'<div style="margin:6px 0px;font-size:11px;"><b>Potential:</b> '+ Math.round(clone.potential*100) +'% <small>(Increases gene upgrade value)</small></div>'+
+					(ageStage!=4?'<div style="margin:6px 0px;font-size:11px;"><b>Upgrade Rolls:</b> '+ M.coolifyNumber(clone.upgradeRolls) +'</div>':'')+
+					(ageStage!=4?'<div style="margin:6px 0px;font-size:11px;"><b>🗲 Upgrade Power:</b> '+ M.coolifyNumber(clone.upgradePower) +'</div>':'')+
+					(ageStage==4?'<div style="margin:6px 0px;font-size:11px;" '+(clone.fusionsLeft==0?'class="red"':'')+'><b>Fusions Left:</b> '+ clone.fusionsLeft +'</div>':'')+	
 				'</div>'+
 				'<div class="line"></div>'+
 				// Effects
 				'<div class="description">'+
-					'<div style="margin:6px 0px;"><b>'+loc("Genes:")+'</b> <span style="font-size:11px;">(while in the prime vat, purchasing a You will give that You all these effects. Bar represents chance to be upgraded.)</span></div>';
-					var totalWeight = M.getTotalWeight(clone.stats);
+					'<div style="margin:6px 0px;"><b>'+loc("Genes:")+'</b> <span style="font-size:11px;">('+(M.showStatBreakdown?'You are holding shift. Gene value = (gene upgrade value x 🗲 applied upgrade power x ★ favoured bonus)':(ageStage!=4?'Bar represents chance to be upgraded. ':'')+'Hold Shift to see a breakdown of gene value')+')</span></div>';
+					var totalWeight = M.getTotalWeight(clone.stats)
 					var geneStr = ''
 					for (var i in clone.stats) {
 						var stat = clone.stats[i];
 						var isFavoured = M.isStatFavoured(clone.personality, i);
-						geneStr+='<div style="height:15px">'+
-							'<div style="z-index:1;position:relative;font-size:11px;font-weight:bold;" class="'+ ((stat.power==0)?'gray':((stat.negative)?'red':'green')) +'">'+(isFavoured?'★':'&bull;')+' '+ ((stat.power==0)?'???':M.stats[i].statStr) +' '+ ((stat.power>0)?'+':'') + ((stat.power==0)?'?':(Math.abs(stat.power)>0.01)?(Math.round(stat.power*10000)/100):(stat.power*100).toPrecision(1)) +'%</div>'+
-							'<div style="position:relative;width:'+100*(stat.weight/totalWeight)+'%;top:-13px;height:13px;background:linear-gradient(to right, #00000000 0%, #33e0ff33 33%, #33e0ff88 100%)"></div>'+
+
+						var statBase = M.linearTransformTable(M.stats[i].upgradePower, clone.potential)
+						var statPowerStr = (stat.power>0?'+':'') + M.coolifyNumber(stat.power, 1)+ '% ('+M.coolifyNumber(stat.upgradeHits)+'🗲)';
+						var statBreakdownStr = '('+(stat.power>0?'+':'')+M.coolifyNumber(statBase*(stat.negative?-1:1), 1)+'% x '+M.coolifyNumber(stat.upgradeHits)+'🗲'+(isFavoured?' x '+M.coolifyNumber(M.getCloneFavouredGeneBonus(clone.personality))+'★':'')+')';
+						
+						geneStr+='<div style="position:relative;margin-bottom:-10px;">'+
+							'<div style="width:'+100*(stat.weight/totalWeight)+'%;height:13px;'+(ageStage!=4?'background:linear-gradient(to right, #00000000 0%, #33e0ff33 33%, #33e0ff55 100%)':'')+'"></div>'+
+							'<div style="position:relative;top:-13px;left:0px;font-size:11px;font-weight:bold;" class="'+ ((stat.power==0)?'gray':((stat.negative)?'red':'green')) +'">'+(isFavoured?'★':'&bull;')+' '+ ((stat.power==0)?'???':M.stats[i].statStr) +' '+ (stat.power==0?'?':(M.showStatBreakdown?statBreakdownStr:statPowerStr))+'</div>'+
 						'</div>';
 					};
-					str+=(geneStr!=''?geneStr:'<div style="font-size:10px;margin-left:64px;"><b>'+loc("None.")+'</b></div>')+
+					str+=(geneStr!=''?geneStr:'<div style="font-size:10px;"><b>'+loc("None.")+'</b></div>')+
 					//str+=(M.personalities[clone.personality].quote?('<q>'+M.personalities[clone.personality].quote+'</q>'):'')+
 				'</div>'+
 			'</div>';
@@ -1313,12 +1538,15 @@ M.launch = function(){
 				} else {
 					if (dragging && M.draggingType == 'therapy') {
 						var notStorage = vat.id.search("storageVat")==-1;
-						var cantDrop = notStorage || (!clone && !notStorage)
+						var adult = clone && clone.ageBracket() == 4;
+						var cantDrop = adult || notStorage || (!clone && !notStorage)
 						str+='<div class="block description '+ ((cantDrop)?('red'):'') +'">';
-						if (clone && !notStorage) {
+						if (clone && !notStorage && !adult) {
 							str+='Release to enact <b>'+ dragging.name +'</b> on <b>'+ M.getCloneName(clone.name) +'</b>.';
 						} else if (notStorage) {
 							str+='Only clones in storage can undergo therapy.'
+						} else if (adult) {
+							str+='Only growing clones can undergo therapy.'
 						} else {
 							str+='There is no clone here.'
 						}
@@ -1339,15 +1567,14 @@ M.launch = function(){
 						}
 						str+='</div>';
 					} else {
-						var cantDrop = vat.dropRule == -1 || (dragging && dragging.ageBracket() < vat.dropRule);
-						str+='<div class="block description '+ ((cantDrop)?('red'):'') +'">';
-						if (!cantDrop && dragging) {
+						var dropFunc = vat.dropFunc(dragging);
+						var canDrop = dragging && dropFunc[0];
+						str+='<div class="block description '+ (dropFunc[2] || (dragging && !canDrop)?('red'):'') +'">';
+						if (canDrop && dragging) {
 							str+='Release to place <b>'+ M.getCloneName(dragging.name) + '</b> in this vat.';
-						} else if (vat.dropRule > -1) {
-							str+='Drag a'+ ((vat.dropRule==4)?'n <b>adult</b>':'') +' clone onto this vat to place it here.'
-						} else if (vat.dropRule == -1) {
-							str+='You cannot place a clone here.'
-						}
+						} else {
+							str+=dropFunc[1];
+						};
 						str+='</div>';
 					};
 				}
@@ -1366,65 +1593,50 @@ M.launch = function(){
 
 		M.infoTooltip = function(id) {
 			return function() {
-				var building = Game.Objects[minigameBuildingName];
+				var primeVat = M.vats['primeVat'];
+				var primeClone = primeVat.holds;
+
 				var effStr = '';
-				
-				effStr+='<div>'
-				// Individual sets
-				var totalEff = [];
-				for (var i in M.youStats)
-				{	
-					var v = M.youStats[i];
-					var mult = v?v.mult:1;
-					var highestYou = Number(i)+mult-1;
-					var copiedCloneName = v.copiedCloneName?M.getCloneName(v.copiedCloneName):0;
-					
-					effStr+='<div style="font-size:11px;margin-left:48px;">'+ i + ((Number(i)!=highestYou)?'-'+ highestYou:'') +' ('+ mult +'x)'+ ((copiedCloneName != 0)?' <small>(Copying genes from <b>'+ copiedCloneName +'</b>)</small>':'') +':</div>'
-					
-					var otherEffectStr = ''
-					for (var statId in v.stats) {
-						var power = v.stats[statId].power * mult;
-						totalEff[statId] = totalEff[statId]?totalEff[statId]+power:power;
-						var negative = v.stats[statId].negative;
-						otherEffectStr+='<div style="font-size:10px;margin-left:64px;" class="'+ ((power==0)?'gray':((negative)?'red':'green')) +'">&bull; '+ ((power==0)?'???':M.stats[statId].statStr) +' '+ ((power>0)?'+':'') + ((power==0)?'?':(Math.abs(power)>0.01)?(Math.round(power*10000)/100):(power*100).toPrecision(1)) +'%</div>'			
+				if (primeClone) {
+					M.calculateStatValues(primeClone.stats, primeClone.potential, primeClone.personality);
+					effStr+='<div style="font-size:11px;margin-left:48px;"><small>Copying genes from <b>'+M.getCloneName(primeClone.name)+'</b> as effects.</small></div>'
+					for (var i in primeClone.stats) {
+						var stat = primeClone.stats[i];
+						var power = stat.power;
+						var negative = stat.negative;
+						effStr+='<div style="font-size:10px;margin-left:64px;" class="'+ ((power==0)?'gray':((negative)?'red':'green')) +'">&bull; '+ ((power==0)?'???':M.stats[i].statStr) +' '+ ((power>0)?'+':'') + ((power==0)?'?':M.coolifyNumber(power, 1)) +'%</div>';
 					};
-					if (otherEffectStr == '') {otherEffectStr='<div style="font-size:10px;margin-left:64px;"><b>None.</b></div>';}
-					effStr+=otherEffectStr;
 				};
-
+				
 				// Total
-				effStr+='<div class="line"></div>';
-				effStr+='<div style="margin-left:40px">Combined effects of all You:</div>';
-				var otherEffectStr = ''
-				for (var i in totalEff)
-				{	
-					var power = totalEff[i];
-					var negative = Math.sign(power)!=Math.sign(M.stats[i].upgradePower[0]);
-					otherEffectStr+='<div style="font-size:10px;margin-left:64px;" class="'+ ((power==0)?'gray':((negative)?'red':'green')) +'">&bull; '+ ((power==0)?'???':M.stats[i].statStr) +' '+ ((power>0)?'+':'') + ((power==0)?'?':(Math.abs(power)>0.01)?(Math.round(power*10000)/100):(power*100).toPrecision(1)) +'%</div>'						
+				var totalEffectStr = ''
+				if (primeClone) {
+					M.calculateStatValues(primeClone.stats, primeClone.potential, primeClone.personality);
+					for (var i in primeClone.stats) {
+						var stat = primeClone.stats[i];
+						var power = stat.power * M.parent.amount;
+						var negative = stat.negative;
+						totalEffectStr+='<div style="font-size:10px;margin-left:64px;" class="'+ ((power==0)?'gray':((negative)?'red':'green')) +'">&bull; '+ ((power==0)?'???':M.stats[i].statStr) +' '+ ((power>0)?'+':'') + ((power==0)?'?':M.coolifyNumber(power, 1)) +'%</div>';
+					};
 				};
-				if (otherEffectStr == '') {otherEffectStr='<div style="font-size:10px;margin-left:64px;"><b>None.</b></div>';}
-				effStr+=otherEffectStr;
-				effStr+='</div>';
-
-				if (effStr=='') effStr='<div style="font-size:10px;margin-left:64px;"><b>None.</b></div>';
-				effStr+='<div class="line"></div>';
-				effStr+='<div style="float:right;margin:0px 0px 8px 8px;"/><small style="line-height:100%;">'+
-				'&bull; New clones will gain genes based on their personality and potential.<br>'+
-				//'&bull; Low potential clones may also gain bonus genes, these genes may not be favoured.<br>'+
-				'&bull; Clones will roll for upgrades when they enter a new age group. When a clone rolls for upgrades, for each upgrade roll a clone has, a random gene will be chosen, that gene will then be upgraded by its upgrade value multiplied by the clone\'s upgrade power.<br>'+
-				'&bull; Personalities may have favoured genes which have a higher upgrade value and upgrade chance.<br>'+
-				'&bull; High potential clones will generally have better genes than low potential clones.<br>'+
-				//'&bull; Clones do not reset when you ascend.<br>'+
-				//'&bull; Incubator Vats time does not progress while the game is closed.<br>'+
-				'</small>';
 				
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsInfo">'+
 					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
-					'<div><div class="name">Incubator Vats Info</div></div>'+
+					'<div><div class="name">Cloning Facility Info</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
-						'<div>Effects of You:</div>'+
-						effStr+
+						'<div>Effects per You:</div>'+
+						(effStr==''?'<div style="font-size:10px;margin-left:64px;"><b>None.</b><br>Place an adult clone in the prime vat and all You will copy its genes as effects.</div>':effStr)+
+						'<div class="line"></div>'+
+						'<div style="margin-left:40px">Combined effects of all You (x'+M.parent.amount+'):</div>'+
+						(totalEffectStr==''?'<div style="font-size:10px;margin-left:64px;"><b>None.</b></div>':totalEffectStr)+
+						'<div class="line"></div>'+
+						'<div style="float:right;margin:0px 0px 8px 8px;"/><small style="line-height:100%;">'+
+						'&bull; When a clone is created, it will be given a random personality, potential and genes depending on the former two attributes.<br>'+
+						'&bull; When a clone enters a new age group, for each upgrade roll that clone has, a random gene will be selected. That genes value will then be increased by its own upgrade value, multiplied by the upgrade power of the clone.<br>'+
+						'&bull; A clone\'s potential increases the upgrade value of its genes and reduces the amount of starting genes.<br>'+
+						'&bull; Personalities have ★ favoured genes which have a '+M.favouredPowerMult+'x gene value and '+M.favouredWeightMult+'x starting upgrade chance.<br>'+
+						'</small>';
 					'</div>'+
 				'</div>';
 				return str;
@@ -1451,7 +1663,7 @@ M.launch = function(){
 		M.therapyTooltip = function(id) {
 			return function() {
 				var therapy = M.therapies[id];
-				var cost = Game.cookiesPs * therapy.cpsCostPerTick;
+				var cost = Game.cookiesPs * therapy.cpsCostPerTick * (Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1);
 				
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsTherapy">';
 						if (M.parent.amount < therapy.youRequirement) {
@@ -1459,7 +1671,7 @@ M.launch = function(){
 						} else {
 							str+='<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-therapy.icon[0]*48)+'px '+(-therapy.icon[1]*48)+'px;"></div>'+
 							'<div style="float:right;text-align:right;width:150px;"><small>'+ M.getDurStrFromTicks(1) +' of therapy costs:</small><br><span class="price '+ (M.canAfford(cost)?'':'disabled') +'">'+Beautify(Math.round(shortenNumber(cost)))+'</span><br><small>'+loc("%1 of CpS",[Game.sayTime((cost/Game.cookiesPs)*Game.fps,-1)])+'</small></div>'+
-							'<div style:"width:200px;"><div class="name">'+ therapy.name +'</div><small>Drag this therapy onto a clone in storage to enact the therapy.</small></div>'+
+							'<div style:"width:200px;"><div class="name">'+ therapy.name +'</div><small>Drag this therapy onto a growing clone in storage to enact the therapy.</small></div>'+
 							'<div class="line"></div>'+
 							'<div class="description">'+
 								'<div style="text-align:left;">'+
@@ -1504,6 +1716,97 @@ M.launch = function(){
 				'</div>';
 				return str;
 			}
+		};
+
+		M.commissionsInfoTooltip = function(id) {
+			return function() {				
+				var effStr = '';
+				
+				for (var i in M.commissionsCompleted) {
+					var completed = M.commissionsCompleted[i];
+					var name = M.personalities[i].name;
+					effStr+='<div style="font-size:10px;margin-left:48px;"><b>&bull; '+name+' '+completed+'x</b> ('+name+' favoured gene bonus <span class="'+(completed==0?'gray':'green')+'">+'+M.coolifyNumber(M.getCommissionsCurve(completed), 1)+'%</span>)</div>';
+				};
+
+				var completeSets = 1000;
+				for (var i in M.commissionsCompleted) {
+					if (M.commissionsCompleted[i]<completeSets) {
+						completeSets = M.commissionsCompleted[i];
+					};
+				};
+
+				effStr+= '<div style="font-size:10px;margin-left:40px;"><small>Signed clone contracts of each personality: <b>'+completeSets+'x</b></small>.</div>'
+
+				var str='<div style="padding:8px 4px;min-width:350px;" id="commissionTooltipVatsInfo">'+
+					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div><div class="name">Contract Clones Info</div></div>'+
+					'<div class="line"></div>'+
+					'<div class="description">'+
+						'<div>Signed clone contracts ('+M.totalCommissionsCompleted+'x):</div>'+
+						(effStr==''?'<div style="font-size:10px;margin-left:48px;"><b>None.</b></div>':effStr)+
+						'<div class="line"></div>'+
+						'<div style="float:right;margin:0px 0px 8px 8px;"/><small style="line-height:100%;">'+
+							'&bull; You will recieve requests for clones with a specific personality and genes with a minimum applied upgrade power.<br>'+
+							'&bull; Completing these requests will sign a contract that sends the clone to some far away place, giving you a record of that contract which increases the favoured gene bonus of the contracted clone\'s personality.<br>'+
+							'&bull; Place a clone in the contract vat to offer it for the request.<br>'+
+							'&bull; Your records of clone contracts and number of skipped requests are not reset upon ascension.<br>'+
+							//'&bull; You may skip and generate a new commission using cookies, although this increases in price with every skip.<br>'+
+							//'&bull; Submitting a clone will remove it and generate a new commission if the offered clone meets the request.<br>'+
+						'</small>';
+					'</div>'+
+				'</div>';
+				return str;
+			}
+		};
+
+		M.commissionsSubmitTooltip = function(id) {
+			return function() {		
+				var mismatchStr = '';
+				var mismatches = M.getCommissionsOfferMismatches(M.currentCommission);
+				
+				for (var i in mismatches) {
+					mismatchStr+='<div class="red">&bull; '+mismatches[i]+'</div>';
+				};
+				
+				var str='<div style="padding:8px;width:300px;font-size:11px;text-align:center;">'+
+					'If there is an adult clone in the contract vat and it meets the requirements of the current request, you can sign a contract for it, sending it far away and giving you a record of the contract which increases the clone\'s personality\'s favoured gene bonus.'+
+					'<div class="line"></div>'+
+					'<div class="description" style="text-align:left;">'+
+						(mismatchStr==''?'<div class="green">&bull; Offered clone fulfulls request!</div>':mismatchStr)+
+					'</div>';
+				str+='</div>';
+				return str;
+			}
+		};
+
+		M.commissionsSkipTooltip = function(id) {
+			return function() {				
+				var cost = M.getCommissionsSkipCost(M.commissionsSkipped);
+				var str='<div style="padding:8px;width:300px;font-size:11px;text-align:center;">'+
+					'Skipping will generate a new request but not give any reward.'+
+					'<div class="line"></div>'+
+					'This will cost<br>'+
+					'<span class="price '+ (M.canAfford(cost)?'':'disabled') +'">'+Beautify(Math.round(shortenNumber(cost)))+'</span><br>'+
+					'<small>'+Game.sayTime((cost/Game.cookiesPs)*Game.fps,-1)+' of CpS<br>('+Game.sayTime((cost/Game.cookiesPsRawHighest)*Game.fps,-1)+' of highest raw CpS)</small><br>'+
+					'Cost scales with requests skipped.'+
+					'<div class="line"></div>'+
+					'You have skipped '+M.commissionsSkipped+' requests.'+
+				'</div>';
+				return str;
+			}
+		};
+
+		M.commissionsSacrificeTooltip = function(id) {
+			return function() {				
+				var str='<div style="padding:8px 4px;min-width:350px;" id="commissionTooltipVatsInfo">'+
+					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-5*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div><div class="name">Destroy clone contract records</div></div>'+
+					'<div class="line"></div>'+
+					'A group of lawyers raid your filing cabinets and <span class="red">steal the records of all signed clone contracts</span>.<br>Their briefcases are too full to carry a manilla folder, so in return, they leave behind <span class="green">'+M.getCommissionsLumps()+' sugar lumps</span> that are yours for the taking. <small>(Number of sugar lumps increases with signed clone contracts of each personality)</small><br>This action is only available after signing at least 1 contract of each clone personality.'+
+					'</div>'+
+				'</div>';
+				return str;
+			};
 		};
 
 		M.dragging=false;
@@ -1554,7 +1857,7 @@ M.launch = function(){
 					M.vats[M.vatHovered].l.appendChild(div);
 					PlaySound('snd/sell1.mp3',0.75);
 				}
-				else if (M.vatHovered !=-1 && M.vats[M.vatHovered].holds == 0 && M.vats[M.vatHovered].dropRule != -1 && M.dragging.ageBracket() >= M.vats[M.vatHovered].dropRule )//dropping on a vat which is empty
+				else if (M.vatHovered !=-1 && M.vats[M.vatHovered].holds == 0 && M.vats[M.vatHovered].dropFunc(dragging)[0])//dropping on a vat which is empty
 				{	
 					l('vat-'+M.vatHovered).appendChild(div);
 					M.vats[dragging.location].holds = 0;
@@ -1569,12 +1872,12 @@ M.launch = function(){
 					PlaySound('snd/sell1.mp3',0.75);
 				}
 			} else if (type == 'therapy') { // Dragging a therapy
-				if (M.vatHovered != -1 && M.vats[M.vatHovered].holds != 0 && M.vats[M.vatHovered].id.search("storageVat")!=-1) {
+				if (M.vatHovered != -1 && M.vats[M.vatHovered].holds != 0 && M.vats[M.vatHovered].holds.ageBracket() != 4 && M.vats[M.vatHovered].id.search("storageVat")!=-1) {
 					var vatHovered = M.vatHovered;
 					var clone = M.vats[vatHovered].holds;
 					
-					M.showTicksPrompt(dragging.name, function(){return M.getMaxTherapyTime(clone)}, dragging.icon, dragging.cpsCostPerTick, function(value) {
-						var cost = Game.cookiesPs * value * dragging.cpsCostPerTick
+					M.showTicksPrompt(dragging.name, function(){return M.getMaxTherapyTime(clone)}, dragging.icon, dragging.cpsCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1), function(value) {
+						var cost = Game.cookiesPs * value * dragging.cpsCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1);
 						if (Game.cookies>=cost) {
 							Game.Spend(cost);
 							M.giveTherapy(clone, dragging.id, value);
@@ -1614,6 +1917,8 @@ M.launch = function(){
 			};
 			M.dragging=false;
 			M.draggingType=0;
+
+			M.toCompute = 1;
 		};
 		
 		M.vatHovered=-1;
@@ -1626,11 +1931,22 @@ M.launch = function(){
 			}
 		};
 
-		M.makeVat = function(id, name, activeDescFunc, dropRule, vatInfoFunc) {
+		M.getUnlockedStorageVats = function() {
+			for (var i in M.vats) {
+				var vat = M.vats[i];
+				var storageNum = vat.id.replace('storageVat', '');
+				if (storageNum>0) {
+					vat.l.style.display = M.parent.level>=storageNum?'inline-block':'none'
+				};
+			};
+			return Math.min(M.parent.level, M.storageVatNum);
+		};
+
+		M.makeVat = function(id, name, activeDescFunc, dropFunc, vatInfoFunc) {
 			M.vats[id] = {};
 			M.vats[id].name = name;
 			M.vats[id].activeDescFunc = activeDescFunc;
-			M.vats[id].dropRule = dropRule; // -1 No dropping, 0-4 = minimum age stage
+			M.vats[id].dropFunc = dropFunc;
 			M.vats[id].vatInfoFunc = vatInfoFunc;
 			M.vats[id].holds = 0;
 			M.vats[id].N = M.vatsN;
@@ -1640,6 +1956,11 @@ M.launch = function(){
 			return '<div id="vat-'+ id +'" class="shadowFilter on vatsVat vatsVat'+ ((M.vats[id].N%3)+1) +'" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.vatTooltip('+ M.vats[id].N +')', 'this')+'></div>';
 		};
 
+		M.dragonBoostTooltip=function()
+		{
+			return '<div style="width:280px;padding:8px;text-align:center;" id="tooltipDragonBoost"><b>Supreme Intellect</b><div class="line"></div>Synthesizer and Combiner have +'+M.coolifyNumber(1*Game.auraMult('Supreme Intellect'))+' effective <b>You</b> level.</div>';
+		}
+
 		var str='';
 		str+='<style>'+
 		'#vatsBG{background:url('+Game.resPath+'img/shadedBorders.png),url('+MMMImagePrefix+'/BGvats.png);background-size:100% 100%,auto;position:absolute;left:0px;right:0px;top:0px;bottom:16px;}'+
@@ -1648,12 +1969,15 @@ M.launch = function(){
 		'#vatsCenter{text-align:center;padding:8px;position:absolute;top:4px;left:35%;width:30%;height:'+M.topShelfSize+'px;box-sizing:border-box;}'+
 		'#vatsLeftPanel{text-align:center;padding:8px;position:absolute;left:4px;top:4px;bottom:4px;width:34%;height:'+M.topShelfSize+'px;box-sizing:border-box;}'+
 		'#vatsRightPanel{text-align:center;padding:8px;position:absolute;right:-4px;top:4px;bottom:4px;width:35%;height:'+M.topShelfSize+'px;box-sizing:border-box;}'+
-		'#vatsStoragePanel{text-align:center;margin-top:'+(M.topShelfSize+8)+'px;width:100%;padding:8px;box-sizing:border-box;}'+
+		'#vatsStoragePanel{position:relative;text-align:center;margin-top:'+(M.topShelfSize+8)+'px;width:100%;}'+
+		'#vatsCommissionsPanel{text-align:center;height:100%;position:absolute;top:-4px;right:-4px;width:34%;padding:8px;box-sizing:border-box;}'+
 
 		'.vatsInfoLabel{margin-top:-4px;font-size:10px;color:rgba(255,255,255,0.5);}'+
 		'.vatsPanelLabel{font-size:12px;width:100%;padding:2px;margin-top:4px;margin-bottom:-4px;}'+
-		
-		'.vatsOption{margin:0px;height:14px;pointer-events:auto;   display:inline-block;font-size:12px;padding:4px 8px;text-decoration:none;border:1px solid #e2dd48;border-color:#ece2b6 #875526 #733726 #dfbc9a;background:#000 url(img/darkNoise.jpg);background-image:url(img/shadedBordersSoft.png),url(img/darkNoise.jpg);background-size:100% 100%,auto;background-color:#000;border-radius:2px;box-shadow:0px 0px 1px 2px rgba(0,0,0,0.5),0px 2px 4px rgba(0,0,0,0.25),0px 0px 2px 2px #000 inset,0px 1px 0px 1px rgba(255,255,255,0.5) inset;text-shadow:0px 1px 1px #000;color:#ccc;line-height:100%;}'+
+		'.vatsDisabled{filter:grayscale(100%);opacity:0.25;pointer-events:none;}'+
+		'.noFilters .vatsDisabled{opacity:0.1;}'+
+
+		'.vatsOption{margin:0px;height:14px;   display:inline-block;font-size:12px;padding:4px 8px;text-decoration:none;border:1px solid #e2dd48;border-color:#ece2b6 #875526 #733726 #dfbc9a;background:#000 url(img/darkNoise.jpg);background-image:url(img/shadedBordersSoft.png),url(img/darkNoise.jpg);background-size:100% 100%,auto;background-color:#000;border-radius:2px;box-shadow:0px 0px 1px 2px rgba(0,0,0,0.5),0px 2px 4px rgba(0,0,0,0.25),0px 0px 2px 2px #000 inset,0px 1px 0px 1px rgba(255,255,255,0.5) inset;text-shadow:0px 1px 1px #000;color:#ccc;line-height:100%;}'+
 		'.vatsOption.off{opacity:0.5;}'+
 		'.vatsOption.disabled{filter:grayscale(100%);opacity:0.5;}'+
 		'.vatsOption:hover{border-color:#fff;color:#fff;text-shadow:none;}'+
@@ -1661,8 +1985,6 @@ M.launch = function(){
 		// A lot of vatsoption is inherited from a.option, stuff before the gap in the first decleration is what's really changed about it
 
 		'.vatsSac{box-sizing:border-box;font-size:11px;font-weight:bold;padding:2px 4px;margin:1px;height:18px;display:inline-block;}'+
-	
-		'.debugclass{outline:1px red solid;}'+
 
 		'.vatsVat{cursor:pointer;position:relative;color:#f33;text-shadow:0px 0px 4px #000,0px 0px 6px #000;font-weight:bold;font-size:12px;display:inline-block;width:60px;height:74px;background:url('+MMMImagePrefix+'/crudeVats.png);}'+
 		'.vatsVat.on:hover{z-index:1000000001;top:-1px;}'+
@@ -1701,7 +2023,7 @@ M.launch = function(){
 		str+='<div id="vatsContent">';
 			str+='<div id="vatsDrag"></div>';
 			str+='<div id="vatsLeftPanel">';
-				str+='<div id="vatsSacrificePanel" class="framed" style="z-index:2;margin:0px;position:absolute;left:4px;top:0px;box-sizing:border-box;height:100%;width:125px;font-size:10px;padding:2px 0px;font-weight:bold;" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.sacTooltip()','this')+'>';
+				str+='<div id="vatsSacrificePanel" class="framed vatsDisabled" style="z-index:2;margin:0px;position:absolute;left:4px;top:0px;box-sizing:border-box;height:140px;width:125px;font-size:10px;padding:2px 0px;font-weight:bold;" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.sacTooltip()','this')+'>';
 					str+='<div class="title vatsPanelLabel">Sacrifice</div><div class="line"></div>';		
 						str+='<div style="width:100%;box-sizing:border-box;">';
 							str+='<div id="vatsSacGoLeft" style="position:absolute;left:18px;top:39px;bottom:0px;" class="vatsSac vatsOption"><</div>';
@@ -1721,12 +2043,12 @@ M.launch = function(){
 							str+='<div id="vatsSacReset" style="position:absolute;right:6px;bottom:2px;" class="vatsSac vatsOption">Reset</div>'
 						str+='</div>';
 				str+='</div>';
-				str+='<div style="top:'+((M.topShelfSize/2)-35)+'px;right:0px;position:absolute;width:45%;">';
-					str+=M.makeVat('synthesizerVat', 'Synthesizer',
+				str+='<div style="top:'+((M.topShelfSize/2)-35)+'px;left:140px;position:absolute;width:120px;">';
+					str+=M.makeVat('synthesizerVat', 'Synthesizer Mk I',
 						function(clone) {
 							return;
 						},
-						-1,
+						function() {return [false, 'You cannot place a clone here.', true]},
 						function() {
 							if (M.synthesizerDuration != -1) {
 								var str = '';
@@ -1747,7 +2069,7 @@ M.launch = function(){
 						str+='</a>';
 					str+='</div>';
 				str+='</div>';
-			str+='</div>'
+			str+='</div>';
 
 			str+='<div id="vatsCenter">';
 				str+='<div style="position:absolute;width:100%;" class="vatsInfoLabel" id="vatsNextTick">Initializing...</div>';
@@ -1757,10 +2079,12 @@ M.launch = function(){
 					str+='</div>';
 					str+=M.makeVat('primeVat', 'Prime Vat',
 						function(clone) {
-							return 'This clone\'s genes are being replicated onto purchased You.';
+							return 'This clone\'s genes are being replicated onto all You.';
 						},
-						//'&bull; When a You is purchased, it will gain the genes of a clone placed here as effects.<br>&bull; Selling that You will remove its effects.', 
-						4);
+						function(clone) {
+							return [clone && clone.ageBracket() == 4, 'Drag an <b>adult</b> clone onto this vat to place it here.'];
+						}
+					);
 					str+='<div id="vatsBinHolder" style="position:absolute;right:30px;top:12px;">';
 						str+='<div id="vatsBin" style="width:48px;height:48px" class="vatsCloneHolder" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.binTooltip()','this')+'>';
 							str+='<div id="vatsBinIcon" class="vatsCloneIcon shadowFilter" style="background-position:'+(-4*48)+'px '+(-2*48)+'px;"></div><div class="vatsCloneHolderDrag" id="vatsBinDrag"></div>';
@@ -1770,22 +2094,25 @@ M.launch = function(){
 				str+='<div style="position:absolute;width:100%;bottom:0px;" class="vatsInfoLabel" id="vatsStatistics">Initializing...</div>';
 			str+='</div>';
 
-			str+='<div id="vatsRightPanel" style="padding-top:'+((M.topShelfSize/2)-35)+'px;">';
+			str+='<div id="vatsRightPanel" class="vatsDisabled" style="padding-top:'+((M.topShelfSize/2)-35)+'px;">';
 				str+='<div>'
 					for (var i = 1; i<=2; i++)
 					{
-						str+=M.makeVat('combinerVat'+ i, 'Combiner Vat '+ i,
+						str+=M.makeVat('combinerVat'+ i, 'Combiner Input Vat '+ i,
 							function(clone) {
 								return clone.canBePickedUp?'This clone is waiting to be fused.':'This clone is <b>busy</b> being fused with another clone.';
 							},
-							4);
+							function(clone) {
+								return [clone && clone.ageBracket() == 4 && clone.fusionsLeft > 0, 'Drag an <b>adult</b> clone with <b>at least one fusion remaining</b> onto this vat to place it here.'];
+							}
+						);
 					};
 					str+='<div style="width:24px;height:24px;margin-bottom:23px;display:inline-block;background:url('+MMMImagePrefix+'/vatsClones.png);background-position:0px '+(-2*48)+'px;"></div>';
-					str+=M.makeVat('combinerOutputVat', 'Combiner Output',
+					str+=M.makeVat('combinerOutputVat', 'Combiner Mk I',
 					function(clone) {
 						return;
 					},
-					-1,
+					function() {return [false, 'You cannot place a clone here.', true]},
 					function() {
 							if (M.combinerTotalTicks != -1) {
 								var str = '';
@@ -1799,7 +2126,7 @@ M.launch = function(){
 						});
 				str+='</div>'
 				str+='<div style="margin-top:4px;width:100%;box-sizing:border-box;">';
-					str+='<a id="vatsCombinerStart" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Two adult clones are required to begin fusion. This will destroy both clones and create a new adult clone.<div class="line"></div>Personality and potential will be either of the original clones\' or a number inbetween. All genes will be inherited from the original clones\'.<div class="line"></div>Each gene has a chance to be destroyed upon clone creation, this chance decreases with fusion time and <b>You</b> level.</div>')+'>';
+					str+='<a id="vatsCombinerStart" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Two adult clones are required to begin fusion. This will destroy both clones and create a new adult clone.<div class="line"></div>Personality and potential will be either of the original clones\' or a number inbetween.<div class="line"></div>All genes will be inherited from the original clones\' albeit with 10% reduced applied upgrade power (doubled up genes have applied upgrade power reduced by 30% instead).<div class="line"></div>Each gene has a chance to be destroyed upon clone creation, this chance decreases with fusion time and <b>You</b> level.</div>')+'>';
 						str+='<u>Begin fusion</u>';
 					str+='</a>';
 					str+='<a id="vatsCombinerCancel" style="display:none;" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Cancelling fusion will not refund spent cookies and will <b>not</b> fuse clones to make a new clone.</div>')+'>';
@@ -1808,39 +2135,73 @@ M.launch = function(){
 				str+='</div>';
 			str+='</div>';
 
-			str+='<div id="vatsStoragePanel" class="framed">';
-				str+='<div class="title vatsPanelLabel">'+loc("Storage")+'</div><div class="line"></div>';
-				str+='<div>';
-					for (var i = 1; i<=M.storageVatNum; i++) {
-						str+=M.makeVat('storageVat' + i, 'Storage Vat',
-							function(clone) {
-								return (clone.therapy!=0?'This clone is <b>busy</b> undergoing therapy.':undefined);
-							},
-							//'&bull; Clones here can undergo therapy.<br>&bull; Drag a therapy onto a clone here to enact that therapy.',
-							0);
-					};
-				str+='</div>';
-				str+='<div class="title vatsPanelLabel">'+loc("Therapies")+'</div><div class="line"></div>';
-				str+='<div id="vatsTherapyContainer" style="text-align:center;width:100%;padding:8px;box-sizing:border-box;">';
-					for (var i in M.therapies)
-					{	
-						var therapy = M.therapies[i];
-						str+='<div id="therapy-'+i+'" class="vatsTherapy vatsCloneHolder disabled" style="margin:2px;width:48px;height:48px" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.therapyTooltip(\''+ i +'\')','this')+'>';
-							str+='<div id="therapyIcon-'+i+'" class="vatsCloneIcon shadowFilter" style="background-position:'+(-48*therapy.icon[0])+'px '+(-48*therapy.icon[1])+'px;"></div><div class="vatsCloneHolderDrag" id="vatsTherapyDrag'+i+'"></div>';
+			str+='<div id="vatsStoragePanel">';
+				str+='<div class="framed" style="width:65%;padding:8px;box-sizing:border-box;">';
+					str+='<div id="vatsStorageTitle" class="title vatsPanelLabel">Storage</div>';
+					str+='<div id="vatsStorageLevelInfo" style="margin:2px;"><small>Upgrades with You level.</small></div>';
+					str+='<div class="line"></div>';
+					str+='<div>';
+						for (var i = 1; i<=M.storageVatNum; i++) {
+							str+=M.makeVat('storageVat' + i, 'Storage Vat',
+								function(clone) {
+									return (clone.therapy!=0?'This clone is <b>busy</b> undergoing therapy.':undefined);
+								},
+								function() {return [true, 'Drag a clone onto this vat to place it here.']},
+							);
+						};
+					str+='</div>';
+					str+='<div class="title vatsPanelLabel">Therapies</div><div class="line"></div>';
+					str+='<div id="vatsTherapyContainer" style="text-align:center;width:100%;padding:8px;box-sizing:border-box;">';
+						for (var i in M.therapies)
+						{	
+							var therapy = M.therapies[i];
+							str+='<div id="therapy-'+i+'" class="vatsTherapy vatsCloneHolder disabled" style="margin:2px;width:48px;height:48px" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.therapyTooltip(\''+ i +'\')','this')+'>';
+								str+='<div id="therapyIcon-'+i+'" class="vatsCloneIcon shadowFilter" style="background-position:'+(-48*therapy.icon[0])+'px '+(-48*therapy.icon[1])+'px;"></div><div class="vatsCloneHolderDrag" id="vatsTherapyDrag'+i+'"></div>';
+							str+='</div>';
+							str+='<div id="vatsTherapyPlaceholder'+therapy.id+'" style="margin:2px;" class="vatsTherapyPlaceholder"></div>';
+						};
+					str+='</div>';
+					str+='<div class="line"></div>';
+					str+='<small>Cloning Facility time does not progress while the game is closed.</small><br>';
+					str+='<small>Clones do not reset when you ascend.</small><br>';
+				str+='</div>'
+				str+='<div id="vatsCommissionsPanel" class="framed">';
+					str+='<div id="vatsCommissionsInterface" style="position:relative;display:none;box-sizing:border-box;">';
+						str+='<div class="title vatsPanelLabel">Contract Clones</div>';
+						str+='<div class="line" style="margin-bottom:2px;"></div>';
+						str+='<div style="width:100%;position:relative;">'
+							str+='<div style="position:absolute;left:30px;top:12px;width:48px;height:48px" class="vatsCloneHolder" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsInfoTooltip()','this')+'>';
+								str+='<div class="vatsCloneIcon shadowFilter" style="background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>';
+							str+='</div>';
+							str+=M.makeVat('commissionVat', 'Contract Vat',
+								function(clone) {
+									return undefined;
+								},
+								function(clone) {return [clone && clone.ageBracket() == 4, 'Drag an <b>adult</b> clone onto this vat to place it here.']},
+							);
+							str+='<div id="vatsSacrificeCommission" style="position:absolute;right:30px;top:12px;width:48px;height:48px" class="vatsCloneHolder" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSacrificeTooltip()','this')+'>';
+								str+='<div class="vatsCloneIcon shadowFilter" style="background-position:'+(-5*48)+'px '+(-2*48)+'px;"></div>';
+							str+='</div>';
 						str+='</div>';
-						str+='<div id="vatsTherapyPlaceholder'+therapy.id+'" style="margin:2px;" class="vatsTherapyPlaceholder"></div>';
-					};
+						str+='<div id="vatsSubmitCommission" style="margin-top:3px;" class="vatsOption" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSubmitTooltip()','this')+'><u>Sign clone contract</u></div>';
+						str+='<div class="framed" style="position:relative;text-align:left">';
+							str+='<div id="vatsSkipCommission" style="position:absolute;top:2px;left:3px;margin-top:2px;" class="vatsOption" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSkipTooltip()','this')+'>Skip</div>';
+							str+='<div style="text-align:center;" class="title vatsPanelLabel">Current request:</div>';
+							str+='<div class="line"></div>';
+							str+='<div id="vatsCommissionsCurrentRequest">Initializing...</div>';
+						str+='</div>';
+					str+='</div>';
+					str+='<div id="vatsNextUnlock" style="margin-top:40%;">';
+						str+='Initializing...'
+					str+='</div>';
 				str+='</div>';
-				str+='<div class="line"></div>';
-				str+='<small>Incubator Vats time does not progress while the game is closed.</small><br>';
-				str+='<small>Clones do not reset when you ascend.</small><br>';
 			str+='</div>';
 		str+='</div>';
 		div.innerHTML=str;
 				
 		for (var i in M.vats) {
 			var vat = M.vats[i];
-			vat.l = l('vat-'+ i)
+			vat.l = l('vat-'+ i);
 			AddEvent(vat.l,'mouseover',function(what){return function(){M.hoverVat(what);}}(i));
 			AddEvent(vat.l,'mouseout',function(what){return function(e){if (e.button==0){M.hoverVat(-1);}}}(i));
 		};
@@ -1883,8 +2244,8 @@ M.launch = function(){
 		AddEvent(l('vatsSynthesizerStart'),'click',function() {
 			var outputFull = M.vats['synthesizerVat'].holds;
 			if (!outputFull) {
-				M.showTicksPrompt('Clone Synthesis', function(){return 24*20;}, [2,2], M.synthesizerCpSCostPerTick, function(value) {
-					var cost = Game.cookiesPs * value * M.synthesizerCpSCostPerTick;
+				M.showTicksPrompt('Clone Synthesis', M.getSynthesizerMaxTime, [2,2], M.synthesizerCpSCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1), function(value) {
+					var cost = Game.cookiesPs * value * M.synthesizerCpSCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1);
 					if (Game.cookies>=cost) {
 						Game.Spend(cost);
 						M.startSynthesis(value);
@@ -1894,7 +2255,7 @@ M.launch = function(){
 				function(value) {
 					var stabilityBreakdown = l('vatsPromptSynthesizerStability');
 					if (stabilityBreakdown) {
-						stabilityBreakdown.innerHTML = M.getDurStrFromTicks(value) +' of <b>Clone Synthesis</b> with <b>level '+ M.parent.level +' You</b> and <br><b>'+M.getTotalSacPower()+' sacrifice power</b> has a:<br><b>'+ Math.round(100*M.getSynthesizeMinPotential(value, M.getTotalSacPower())) + '%</b> minimum potential<br>for a newly synthesized clone.';
+						stabilityBreakdown.innerHTML = M.getDurStrFromTicks(value) +' of <b>Clone Synthesis</b> with<br><b>level '+ M.parent.level +' You</b>'+(Game.auraMult('Supreme Intellect')>0?',<br><b>+'+M.coolifyNumber(1*Game.auraMult('Supreme Intellect'))+'</b> effective You level':'')+' and<br><b>'+M.getTotalSacPower()+' sacrifice power</b> has a:<br><b>'+ Math.round(100*M.getSynthesizeMinPotential(value, M.getTotalSacPower())) + '%</b> minimum potential<br>for a newly synthesized clone.';
 					};
 				}
 				);
@@ -1907,8 +2268,8 @@ M.launch = function(){
 			var outputFull = M.vats['combinerOutputVat'].holds;
 
 			if (clone1 && clone2 && !outputFull) {
-				M.showTicksPrompt('Clone Fusion', function(){return 24*20;}, [2,2], M.combinerCpSCostPerTick, function(value) {
-					var cost = Game.cookiesPs * value * M.combinerCpSCostPerTick;
+				M.showTicksPrompt('Clone Fusion', M.getCombinerMaxTime, [2,2], M.combinerCpSCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1), function(value) {
+					var cost = Game.cookiesPs * value * M.combinerCpSCostPerTick*(Game.HasAchiev('Plundering paper pirates')?M.pppDiscount:1);
 					if (Game.cookies>=cost) {
 						Game.Spend(cost);
 						M.startCombiner(value);
@@ -1918,7 +2279,7 @@ M.launch = function(){
 				function(value) {
 					var instabilityBreakdown = l('vatsPromptCombinerInstability');
 					if (instabilityBreakdown) {
-						instabilityBreakdown.innerHTML = M.getDurStrFromTicks(value) +' of <b>Clone Fusion</b> with <b>level '+ M.parent.level +' You</b> has a:<br><b>'+ Math.round(100*M.getCombineDestroyChance(value)) + '%</b> chance<br>to destroy a gene upon clone creation.';
+						instabilityBreakdown.innerHTML = M.getDurStrFromTicks(value) +' of <b>Clone Fusion</b> with <b>level '+ M.parent.level +' You</b>'+(Game.auraMult('Supreme Intellect')>0?' and<br><b>+'+M.coolifyNumber(1*Game.auraMult('Supreme Intellect'))+'</b> effective You level':'')+' has a:<br><b>'+ Math.round(100*M.getCombineDestroyChance(value)) + '%</b> chance<br>to destroy a gene upon clone creation.';
 					};
 				}
 				);
@@ -1932,6 +2293,34 @@ M.launch = function(){
 		AddEvent(l('vatsSynthesizerCancel'),'click',function() {
 			M.endSynthesis(false);
 		});
+
+		AddEvent(l('vatsSubmitCommission'),'click',function() {
+			if (MEMdebug || M.getCommissionsOfferMismatches(M.currentCommission).length==0) {
+				M.completeCommission(true, M.currentCommission);
+			};
+		});
+
+		AddEvent(l('vatsSkipCommission'),'click',function() {
+			var cost = M.getCommissionsSkipCost(M.commissionsSkipped);
+			if (Game.cookies>=cost) {
+				Game.Spend(cost);
+				M.completeCommission(false, M.currentCommission);
+			};
+		});
+
+		AddEvent(l('vatsSacrificeCommission'),'click',function() {
+			var canStart = 1;
+			for (var i in M.personalities) {
+				if (M.commissionsCompleted[i] < M.commissionsSacrificeMin) {
+					canStart = 0;
+				};
+			};
+			if (!canStart) return;
+			PlaySound('snd/toneTick.mp3');
+			Game.Prompt('<h3>Destroy clone contract<br>records</h3><div class="block">Do you REALLY want to have your filing cabinets raided by lawyers?<br><small>This will <b>destroy</b> all records of signed clone contracts.<br>In return, you will gain <b>'+M.getCommissionsLumps()+' sugar lumps</b>.</small></div>',[[loc("Yes"),'Game.ClosePrompt();Game.ObjectsById['+M.parent.id+'].minigame.commissionsSacrifice();'],loc("No")]);
+		});
+
+		M.updateGraphics = 1;
 	}
 	
 	M.save = function(){
@@ -1965,6 +2354,7 @@ M.launch = function(){
 		parseInt(M.combinerTotalTicks)+':'+
 		parseInt(M.synthesizerDuration)+':'+
 		parseInt(M.synthesizerTicksRemaining)+':'+
+		parseInt(M.commissionsSkipped)+':'+
 		'!'; // Save clone data
 		for (var i in M.clones) {
 			var clone = M.clones[i];
@@ -1975,6 +2365,7 @@ M.launch = function(){
 			parseFloat(clone.potential)+':'+
 			parseFloat(clone.upgradeRolls)+':'+
 			parseFloat(clone.upgradePower)+':'+
+			parseFloat(clone.fusionsLeft)+':'+
 			clone.therapy+':'+
 			parseInt(clone.therapyDurRemaining)+':'+
 			clone.location+':'+
@@ -1985,36 +2376,34 @@ M.launch = function(){
 				str+=ii+':'+
 				stat.negative+':'+
 				parseFloat(stat.weight)+':'+
-				parseFloat(stat.upgradeHits)+':'
+				parseFloat(stat.upgradeHits)+':';
 				// Power is recalculated from hits and clone potential so no need to save it
-			};
-			str+='?';
-		};
-		str+='!'; // Save youStats
-		for (var youNum in M.youStats) {
-			var data = M.youStats[youNum];
-			str+=youNum+':'+
-			data.copiedCloneName+':'+
-			parseFloat(data.potential)+':'+
-			data.personality+':'+
-			parseInt(data.mult)+':'+
-			'?';
-			for (var ii in data.stats) {
-				var stat = data.stats[ii];
-				str+=ii+':'+
-				stat.negative+':'+
-				parseFloat(stat.upgradeHits)+':'
-				// Power is recalculated from hits and potential so no need to save it
 			};
 			str+='?';
 		};
 		str+='!'; // Save synth sac pool
 		for (var building in M.synthesizerSacPool) {
 			str+=building+':'+
-			parseInt(M.synthesizerSacPool[building])+':'
+			parseInt(M.synthesizerSacPool[building])+':';
+		};
+		str+='!'; // Save commission request
+		if (M.currentCommission) {
+			str+=M.currentCommission.personality+':';
+			str+='?';
+			for (var ii in M.currentCommission.stats) {
+				var stat = M.currentCommission.stats[ii];
+				str+=ii+':'+
+				stat+':';
+			};
+			str+='?';
+		};
+		str+='!'; // Save commissions completed
+		for (var i in M.commissionsCompleted) {
+			str+=i+':'+
+			parseInt(M.commissionsCompleted[i])+':';
 		};
 
-		console.log('Saving incubator vats:');
+		console.log('Saving Cloning Facility:');
 		console.log(str);
 
 		return str;
@@ -2024,7 +2413,7 @@ M.launch = function(){
 		//interpret str; called after .init
 		//note : not actually called in the Game's load; see "minigameSave" in main.js
 		if(!str) return false;
-		console.log('Loading incubator vats:');
+		console.log('Loading Cloning Facility:');
 		console.log(str);
 		var si=0;
 		var spl=str.split('!');
@@ -2039,6 +2428,7 @@ M.launch = function(){
 		M.combinerTotalTicks=parseInt(spl2[si2++]||M.combinerTotalTicks);
 		M.synthesizerDuration=parseInt(spl2[si2++]||M.synthesizerDuration);
 		M.synthesizerTicksRemaining=parseInt(spl2[si2++]||M.synthesizerTicksRemaining);
+		M.commissionsSkipped=parseInt(spl2[si2++]||M.commissionsSkipped);
 		var cloneData=spl[si++]||'';
 		if (cloneData) {
 			var clones = cloneData.split('?');
@@ -2053,6 +2443,7 @@ M.launch = function(){
 					var potential = parseFloat(splc[di++]);
 					var upgradeRolls = parseFloat(splc[di++]);
 					var upgradePower = parseFloat(splc[di++]);
+					var fusionsLeft = parseInt(splc[di++]);
 					var therapy = splc[di++];
 					var therapyDurRemaining = parseInt(splc[di++]);
 					var location = splc[di++];
@@ -2070,39 +2461,8 @@ M.launch = function(){
 							stats[statName] = statData;
 						};
 					};
-					new M.clone(name, location, personality, potential, age, upgradePower, upgradeRolls, stats, therapy, therapyDurRemaining, canBePickedUp, id, true);
+					new M.clone(name, location, personality, potential, age, upgradePower, upgradeRolls, fusionsLeft, stats, therapy, therapyDurRemaining, canBePickedUp, id, true);
 					M.calculateStatValues(M.lastClone.stats, M.lastClone.potential, M.lastClone.personality);
-				};
-			};
-		};
-		var youStats=spl[si++]||'';
-		if (youStats) {
-			var yous = youStats.split('?');
-			for (var youNum = 0; yous[youNum]!= '' && yous[youNum]!= undefined; youNum) {
-				var di = 0;
-				var sply = yous[youNum++].split(':');
-				if (sply[di]!='' && sply[di]!=undefined) {
-					var youData = {};
-					var stats = {};
-					var youId = sply[di++];
-					youData.copiedCloneName = sply[di++];
-					youData.potential = parseFloat(sply[di++]);
-					youData.personality = sply[di++];
-					youData.mult = parseInt(sply[di++]);
-					var spls = yous[youNum++].split(':');
-					for (var ii = 0; (spls[ii]!='' && spls[ii] != undefined); ii) {
-						if (spls[ii]!='' && spls[ii] != undefined) {
-							var statName = spls[ii++];
-							var statData = {};
-							statData.negative = spls[ii++]=='true';
-							statData.upgradeHits = parseFloat(spls[ii++]);
-							statData.power = 0;
-							stats[statName] = statData;
-						};
-					};
-					youData.stats = stats;
-					M.youStats[youId] = youData;
-					M.calculateStatValues(M.youStats[youId].stats, M.youStats[youId].potential, M.youStats[youId].personality);
 				};
 			};
 		};
@@ -2115,6 +2475,35 @@ M.launch = function(){
 				};
 			};
 		};
+		var currentCommission=spl[si++]||'';
+		if (currentCommission) {
+			var commissionData = currentCommission.split('?');
+			var ci = 0;
+			var splc = commissionData[ci++].split(':');
+			var ci2 = 0;
+			M.currentCommission = {personality:splc[ci2++], stats:{}};
+			var spls = commissionData[ci++].split(':');
+			for (var ii = 0; (spls[ii]!='' && spls[ii] != undefined); ii) {
+				if (spls[ii]!='' && spls[ii] != undefined) {
+					M.currentCommission.stats[spls[ii++]] = spls[ii++];
+				};
+			};
+		} else {
+			M.currentCommission = M.getRandomCommissionsRequest();
+		};
+		var commissionsCompleted=spl[si++]||'';
+		if (commissionsCompleted) {
+			var spls = commissionsCompleted.split(':');
+			for (var di = 0; (spls[di]!='' && spls[di]!=undefined); di) {
+				if (spls[di]!='' && spls[di]!=undefined) {
+					M.commissionsCompleted[spls[di++]] = parseInt(spls[di++]);
+				};
+			};
+		};
+
+		for (var i in M.commissionsCompleted) {
+			M.totalCommissionsCompleted += M.commissionsCompleted[i];
+		};
 
 		// + Pray to god that this works
 
@@ -2126,24 +2515,27 @@ M.launch = function(){
 	M.reset = function(hard){
 		// run when returning from an ascension, hard = 1 if full reset
 		M.creationNum = 0;
+		M.sacPool = {};
+		M.sacSelected = 0;
 		if (hard == 1) {
-			M.clonesN = 0;
+			M.clonesN = MEMdebug?500:0;
 			M.clones = {};
 			M.lastClone = 0;
 			M.nextTick = Date.now() + (M.tickDur * 1000);
-			M.youStats = {};
 			M.binTicksRemaining = -1;
 			M.combinerTicksRemaining = -1;
 			M.combinerTotalTicks = -1;
 			M.synthesizerSacPool = {};
 			M.synthesizerDuration = -1;
 			M.synthesizerTicksRemaining = -1;
-			M.sacPool = {};
-			M.sacSelected = 0;
+			M.commissionsSkipped = 0;
+			M.totalCommissionsCompleted = 0;
+			M.currentCommission = M.getRandomCommissionsRequest();
+			for (var i in M.commissionsCompleted) M.commissionsCompleted[i] = 0;
 		};
 
 		M.toCompute = true;
-	}
+	};
 	
 	M.logic = function(){
 		//run each frame even if closed
@@ -2218,64 +2610,112 @@ M.launch = function(){
 			M.sacAddAmount=M.sacAmountOld;
 			M.sacBulkShortcutOn=0;
 		};
+		M.showStatBreakdown = Game.keys[16]; // Shift
 
-		if (l('vatsCombinerStart')) {
+		var combinerStart = l('vatsCombinerStart');
+		var combinerCancel = l('vatsCombinerCancel');
+		var synthesizerStart = l('vatsSynthesizerStart');
+		var synthesizerCancel = l('vatsSynthesizerCancel');
+		var commissionSubmit = l('vatsSubmitCommission');
+		var commissionSkip = l('vatsSkipCommission');
+		var commissionSacrifice = l('vatsSacrificeCommission');
+
+		if (combinerStart) {
 			var active = M.combinerTotalTicks > 0;
-			if (active && l('vatsCombinerStart').style.display == '') {
+			if (active && combinerStart.style.display == '') {
 				var str = '';
 				str+='<div id="cloneConception-combinerVat" class="vatsCloneHolder">';
 					str+='<div id="cloneConceptionIcon-combinerVat" class="shadowFilter vatsCloneIcon isClone" style="margin:12px 6px 0px 6px;background-position:'+(-5*48)+'px 0px;"></div>';
 				str+='</div>';
-				l('vatsCombinerStart').style.display = 'none';
-				l('vatsCombinerCancel').style.display = '';
+				combinerStart.style.display = 'none';
+				combinerCancel.style.display = '';
 				M.vats['combinerOutputVat'].l.innerHTML = str;
 			};
-			if (!active && l('vatsCombinerStart').style.display == 'none') {
-				l('vatsCombinerStart').style.display = '';
-				l('vatsCombinerCancel').style.display = 'none';
+			if (!active && combinerStart.style.display == 'none') {
+				combinerStart.style.display = '';
+				combinerCancel.style.display = 'none';
 				if (l('cloneConception-combinerVat')) l('cloneConception-combinerVat').remove();
 			};
 		};
 
-		if (l('vatsSynthesizerStart')) {
+		if (synthesizerStart) {
 			var active = M.synthesizerDuration > 0;
-			if (active && l('vatsSynthesizerStart').style.display == '') {
+			if (active && synthesizerStart.style.display == '') {
 				var str = '';
 				str+='<div id="cloneConception-synthesizerVat" class="vatsCloneHolder">';
 					str+='<div id="cloneConceptionIcon-synthesizerVat" class="shadowFilter vatsCloneIcon isClone" style="margin:12px 6px 0px 6px;background-position:'+(-5*48)+'px 0px;"></div>';
 				str+='</div>';
-				l('vatsSynthesizerStart').style.display = 'none';
-				l('vatsSynthesizerCancel').style.display = '';
+				synthesizerStart.style.display = 'none';
+				synthesizerCancel.style.display = '';
 				M.vats['synthesizerVat'].l.innerHTML = str;
 			};
-			if (!active && l('vatsSynthesizerStart').style.display == 'none') {
-				l('vatsSynthesizerStart').style.display = '';
-				l('vatsSynthesizerCancel').style.display = 'none';
+			if (!active && synthesizerStart.style.display == 'none') {
+				synthesizerStart.style.display = '';
+				synthesizerCancel.style.display = 'none';
 				if (l('cloneConception-synthesizerVat')) l('cloneConception-synthesizerVat').remove();
 			};
 		};
 
-		if (l('vatsCombinerStart') && M.vats['combinerOutputVat']) {
+		if (combinerStart && M.vats['combinerOutputVat']) {
 			var canStart = M.vats['combinerVat1'].holds && M.vats['combinerVat2'].holds && !M.vats['combinerOutputVat'].holds
-			if (!canStart && !l('vatsCombinerStart').classList.contains('disabled')) {
-				l('vatsCombinerStart').classList.add('disabled');
-				triggerAnim(l('vatsCombinerStart'),'pucker');
+			if (!canStart && !combinerStart.classList.contains('disabled')) {
+				combinerStart.classList.add('disabled');
+				triggerAnim(combinerStart,'pucker');
 			};
-			if (canStart && l('vatsCombinerStart').classList.contains('disabled')) {
-				l('vatsCombinerStart').classList.remove('disabled');
-				triggerAnim(l('vatsCombinerStart'),'pucker');
+			if (canStart && combinerStart.classList.contains('disabled')) {
+				combinerStart.classList.remove('disabled');
+				triggerAnim(combinerStart,'pucker');
 			};
 		};
 
-		if (l('vatsSynthesizerStart') && M.vats['synthesizerVat']) {
+		if (synthesizerStart && M.vats['synthesizerVat']) {
 			var canStart = !M.vats['synthesizerVat'].holds
-			if (!canStart && !l('vatsSynthesizerStart').classList.contains('disabled')) {
-				l('vatsSynthesizerStart').classList.add('disabled');
-				triggerAnim(l('vatsSynthesizerStart'),'pucker');
+			if (!canStart && !synthesizerStart.classList.contains('disabled')) {
+				synthesizerStart.classList.add('disabled');
+				triggerAnim(synthesizerStart,'pucker');
 			};
-			if (canStart && l('vatsSynthesizerStart').classList.contains('disabled')) {
-				l('vatsSynthesizerStart').classList.remove('disabled');
-				triggerAnim(l('vatsSynthesizerStart'),'pucker');
+			if (canStart && synthesizerStart.classList.contains('disabled')) {
+				synthesizerStart.classList.remove('disabled');
+				triggerAnim(synthesizerStart,'pucker');
+			};
+		};
+
+		if (commissionSubmit && M.vats['commissionVat'] && M.currentCommission) {
+			var canStart = MEMdebug || M.vats['commissionVat'].holds && M.getCommissionsOfferMismatches(M.currentCommission).length==0;
+			if (!canStart && !commissionSubmit.classList.contains('disabled')) {
+				commissionSubmit.classList.add('disabled');
+				triggerAnim(commissionSubmit,'pucker');
+			};
+			if (canStart && commissionSubmit.classList.contains('disabled')) {
+				commissionSubmit.classList.remove('disabled');
+				triggerAnim(commissionSubmit,'pucker');
+			};
+		};
+
+		if (commissionSkip) {
+			var canStart = M.canAfford(M.getCommissionsSkipCost(M.commissionsSkipped));
+			if (!canStart && !commissionSkip.classList.contains('disabled')) {
+				commissionSkip.classList.add('disabled');
+				triggerAnim(commissionSkip,'pucker');
+			};
+			if (canStart && commissionSkip.classList.contains('disabled')) {
+				commissionSkip.classList.remove('disabled');
+				triggerAnim(commissionSkip,'pucker');
+			};
+		};
+
+		if (commissionSacrifice) {
+			var canStart = 1;
+			for (var i in M.personalities) {
+				if (M.commissionsCompleted[i] < M.commissionsSacrificeMin) {
+					canStart = 0;
+				};
+			};
+			if (!canStart && commissionSacrifice.style.display == '') {
+				commissionSacrifice.style.display = 'none';
+			};
+			if (canStart && commissionSacrifice.style.display == 'none') {
+				commissionSacrifice.style.display = '';
 			};
 		};
 	}
@@ -2314,6 +2754,8 @@ M.launch = function(){
 			l('vatsSacAdd').innerHTML = '+'+ M.sacAddAmount;
 			l('vatsSacRemove').innerHTML = '-'+ M.sacAddAmount;
 			l('vatsSacAddAll').innerHTML = '+'+ M.sacAddAmount+' All';
+			l('vatsStorageTitle').innerHTML = 'Storage<small> ('+M.getUnlockedStorageVats()+'/'+M.storageVatNum+')</small>';
+			l('vatsStorageLevelInfo').style.display = (M.getUnlockedStorageVats()==M.storageVatNum)?'none':'';
 			for (var i in M.therapies) {
 				var therapy = M.therapies[i];
 				if (M.parent.amount < therapy.youRequirement) {
@@ -2322,10 +2764,15 @@ M.launch = function(){
 					therapy.l.classList.remove('disabled');
 				};
 			};
+			M.updateUnlockInfo();
+
+			if (M.currentCommission) {
+				l('vatsCommissionsCurrentRequest').innerHTML = M.getCommissionBox(M.currentCommission);
+			};
 		};
-	}
+	};
 	
 	M.init(l('rowSpecial' + M.parent.id));
-}
+};
 
 var M = 0;
