@@ -1,6 +1,6 @@
-# Moonwork's More Minigames
+# Moonwork's Anzac Biscuits
 
-*Current version: You beta.*    
+*Current version: 0.1.*    
 
 This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) which adds extra minigames to the buildings.  
 
@@ -28,6 +28,6 @@ Bugs may be present! Create a backup of your save data before loading!
 
 Currently it adds:  
 - **Cloning Facility (You minigame)**.   
-    - Synthesize and raise clones to maximize their gene strength, then purchase You for them to take on those genes as effects to enhance your cookie production!    
+    - Synthesize, raise, and combine clones to maximize their gene strength, all purchased You will take on those genes as effects to enhance your cookie production!    
 
 (I'm working on adding more in future!) 
