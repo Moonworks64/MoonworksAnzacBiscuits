@@ -15,12 +15,6 @@ Game.registerMod('MoonworksAnzacBiscuits',{
         you.minigameUrl = isLocal?'MoonworksAnzacBiscuits/minigameVats.js':'https://moonworks64.github.io/MoonworksAnzacBiscuits/minigameVats.js';
         you.minigameName = 'Cloning Facility';
 
-        if (MEMdebug) {
-            var you = Game.Objects['Cortex baker'];
-            you.minigameUrl = isLocal?'MoonworksAnzacBiscuits/minigameThink.js':'https://moonworks64.github.io/MoonworksAnzacBiscuits/minigameThink.js';
-            you.minigameName = 'Think Tank';
-        };
-
         Game.LoadMinigames();
 
         if (MEMdebug) {
@@ -31,7 +25,7 @@ Game.registerMod('MoonworksAnzacBiscuits',{
             for (var i in Game.Objects) {
                 var me=Game.Objects[i];
                 me.buy(100);
-                if (!(me.id == 19 || me.id == 18)) {
+                if (!(me.id == 19)) {
                     me.muted = 1;
                 }
                 if (me.level<1)
@@ -198,7 +192,7 @@ Game.registerMod('MoonworksAnzacBiscuits',{
          for (var i in Game.Objects)
         {
             var me=Game.Objects[i];
-            if (me.id == 19 || me.id == 18)
+            if (me.id == 19)
             {
                 if (Game.isMinigameReady(me)) str+=me.minigame.modSave()+','; else str+=(me.modMinigameSave||'')+',';
             }
