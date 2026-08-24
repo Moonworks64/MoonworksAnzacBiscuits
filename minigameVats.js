@@ -102,8 +102,8 @@ M.launch = function(){
 		M.tickDur = MEMdebug?0.1:(3 * 60); // 3 minutes so 20 ticks = 1 hour
 		M.nextTick = Date.now() + (M.tickDur * 1000);
 		
-		M.toCompute = false;
-		M.updateGraphics = false;
+		M.toCompute = 0;
+		M.updateGraphics = 0;
 
 		M.topShelfSize = 140;
 		
@@ -2237,7 +2237,7 @@ M.launch = function(){
 					M.sacPool[M.buildingList[M.sacSelected]] = M.sacButtonsFunctions[what.id](value);
 				};
 				M.sacCapSelectionAndPool();
-				M.updateGraphics = true;
+				M.updateGraphics = 1;
 				PlaySound('snd/tick.mp3');
 				triggerAnim(l('vatsSacSelected'),'pucker');
 				}}(sacButtons[i])
@@ -2510,7 +2510,7 @@ M.launch = function(){
 
 		// + Pray to god that this works
 
-		M.toCompute = true;
+		M.toCompute = 1;
 
 		M.modSaveString = str;
 	}
@@ -2537,7 +2537,7 @@ M.launch = function(){
 			for (var i in M.commissionsCompleted) M.commissionsCompleted[i] = 0;
 		};
 
-		M.toCompute = true;
+		M.toCompute = 1;
 	};
 	
 	M.logic = function(){
@@ -2772,6 +2772,8 @@ M.launch = function(){
 			if (M.currentCommission) {
 				l('vatsCommissionsCurrentRequest').innerHTML = M.getCommissionBox(M.currentCommission);
 			};
+
+			M.updateGraphics = 0;
 		};
 	};
 	
