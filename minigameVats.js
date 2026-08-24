@@ -840,11 +840,11 @@ M.launch = function(){
 			{
 				text=[
 					text,
-					'$ '+romanize(M.clonesN+2)+(Math.random()<0.05?choose(['[C] Jr.','[C] Esq.','[C] Etc.',', Cont\'d','[C] and so forth']):''),
+					'$ '+romanize(M.clonesN+2)+(Math.random()<0.05?choose(['[C] Jr.','[C] Esq.','[C] Etc.','[C] Cont\'d','[C] and so forth']):''),
 					choose([choose(['Lil\' $','Mini-$','$ '+(M.clonesN+2),'Attempt '+(M.clonesN+1),'Experiment '+(M.clonesN+1),'Not $','$[C] again','$[C] the sequel','$ '+(M.clonesN+2)+' Electric Boogaloo','Also $','$ (remixed)','The Other $','$[C] The Next Generation','$[C] part '+romanize(M.clonesN+2),'Revenge of $','The Return of $','$ reborn','$ in the flesh']),'$ "'+choose(['The Menace','The Artisan','The Relative','The Twin','The Specialist','The Officer','The Snitch','The Simpleton','The Genius','The Conformist','The Mistake','The Accident','Lab-grown','Vat Kid','Photocopy','Cloney','Ditto','Accounted For','Twitchy','Wacky','Zen','Rinse & Repeat','Spitting Image','Passing Resemblance','Nickname','Make It So','Deja-vu','Cookie','Clicky','Orteil','But Better','Guess Who','Transplant Fodder','Furthermore','One More Thing','Liquid','Second Chance','Offspring','Mulligan','Spare Parts'])+'" McClone']),
 				][cloneTitle];
 			};
-			return text
+			return text;
 		};
 
 		M.getFavouredStats = function(personality) {
@@ -2722,7 +2722,6 @@ M.launch = function(){
 	
 	M.onResize = function(){
 		// run whenever the window is resized
-		var width = l('vatsContent').offsetWidth;
 	}
 	
 	M.draw = function(){

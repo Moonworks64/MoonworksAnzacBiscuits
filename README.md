@@ -16,7 +16,7 @@ Alternatively, use a bookmarklet with the javascript code:
 
 > javascript:Game.LoadMod('https://moonworks64.github.io/MoonworksAnzacBiscuits/MoonworksAnzacBiscuits.js'); 
 
-To make a bookmarklet: Go to your bookmarks, right click -> new page, then set the url to the above javascript code and give it a good name like "Load More Minigames Mod". Save that bookmark and whenever you click on it, it'll run the javascript code above and load the mod in a single click! Make sure you're on your Cookie Clicker tab when you do this though.   
+To make a bookmarklet: Go to your bookmarks, right click -> new page, then set the url to the above javascript code and give it a good name like "Load Moonwork's Anzac Biscuit's Mod". Save that bookmark and whenever you click on it, it'll run the javascript code above and load the mod in a single click! Make sure you're on your Cookie Clicker tab when you do this though.   
 
 The mod will need to be loaded every time you open up Cookie Clicker unless you use something like [CCMM](https://github.com/klattmose/CookieClickerModManager).    
 
