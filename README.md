@@ -27,6 +27,9 @@ Bugs may be present! Create a backup of your save data before loading!
 ## Content
 
 Currently it adds:  
+- **9 new upgrades.**   
+- **8 new achievements.**   
+
 - **Cloning Facility (You minigame)**.   
     - Synthesize, raise, and combine clones to maximize their gene strength, all purchased You will take on those genes as effects to enhance your cookie production!    
 
