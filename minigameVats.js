@@ -752,6 +752,9 @@ M.launch = function(){
 					commissionsPanel.classList.remove('vatsDisabled');
 				};
 			} else { // Show commission panel if all unlocks are unlocked
+				if (M.currentCommission == 0) {
+					M.currentCommission = M.getRandomCommissionsRequest();
+				};
 				l('vatsNextUnlock').style.display = 'none';
 				l('vatsCommissionsInterface').style.display = '';
 
@@ -2718,6 +2721,8 @@ M.launch = function(){
 				commissionSacrifice.style.display = '';
 			};
 		};
+
+		M.updateUnlockInfo();
 	}
 	
 	M.onResize = function(){
@@ -2763,8 +2768,7 @@ M.launch = function(){
 					therapy.l.classList.remove('disabled');
 				};
 			};
-			M.updateUnlockInfo();
-
+			
 			if (M.currentCommission) {
 				l('vatsCommissionsCurrentRequest').innerHTML = M.getCommissionBox(M.currentCommission);
 			};

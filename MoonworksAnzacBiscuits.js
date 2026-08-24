@@ -15,6 +15,12 @@ Game.registerMod('MoonworksAnzacBiscuits',{
         you.minigameUrl = isLocal?'MoonworksAnzacBiscuits/minigameVats.js':'https://moonworks64.github.io/MoonworksAnzacBiscuits/minigameVats.js';
         you.minigameName = 'Cloning Facility';
 
+        if (MEMdebug) {
+            var you = Game.Objects['Cortex baker'];
+            you.minigameUrl = isLocal?'MoonworksAnzacBiscuits/minigameThink.js':'https://moonworks64.github.io/MoonworksAnzacBiscuits/minigameThink.js';
+            you.minigameName = 'Think Tank';
+        };
+
         Game.LoadMinigames();
 
         if (MEMdebug) {
@@ -25,7 +31,7 @@ Game.registerMod('MoonworksAnzacBiscuits',{
             for (var i in Game.Objects) {
                 var me=Game.Objects[i];
                 me.buy(100);
-                if (!(me.id == 19)) {
+                if (!(me.id == 19 || me.id == 18)) {
                     me.muted = 1;
                 }
                 if (me.level<1)
@@ -192,7 +198,7 @@ Game.registerMod('MoonworksAnzacBiscuits',{
          for (var i in Game.Objects)
         {
             var me=Game.Objects[i];
-            if (me.id == 19)
+            if (me.id == 19 || me.id == 18)
             {
                 if (Game.isMinigameReady(me)) str+=me.minigame.modSave()+','; else str+=(me.modMinigameSave||'')+',';
             }
@@ -261,6 +267,8 @@ Game.registerMod('MoonworksAnzacBiscuits',{
                     if (me.minigame && me.minigame.isModded && me.minigameLoaded && me.minigame.reset) {me.minigame.reset(true);me.minigame.modLoad(mestr[0]||'');} else me.modSaveString=(mestr[0]||0);
                 }
             };
+
+            Game.upgradesToRebuild=1;
         }, 1500); // Have to do this stupidness because for some reason the minigame isn't loaded when .load is called.
     },
 });
