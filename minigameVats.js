@@ -2365,7 +2365,7 @@ M.launch = function(){
 			parseFloat(clone.potential)+':'+
 			parseFloat(clone.upgradeRolls)+':'+
 			parseFloat(clone.upgradePower)+':'+
-			parseFloat(clone.fusionsLeft)+':'+
+			parseInt(clone.fusionsLeft)+':'+
 			clone.therapy+':'+
 			parseInt(clone.therapyDurRemaining)+':'+
 			clone.location+':'+
