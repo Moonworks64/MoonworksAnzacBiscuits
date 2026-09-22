@@ -4,7 +4,7 @@
 
 This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) which adds extra minigames to the buildings (and potentially some more things in future).  
 
-[Moonwork's New Tiers](https://github.com/Moonworks64/MoonworksNewTiers) is loaded alongside this mod!
+[Moonwork's New Tiers](https://github.com/Moonworks64/MoonworksNewTiers) is automatically loaded alongside this mod!
 
 ## How to load
 
@@ -33,10 +33,11 @@ Bugs may be present! Create a backup of your save data before loading!
 ## Content
 
 Currently it adds:  
-- **9 new upgrades.**   
-- **8 new achievements.**   
+- **9 new upgrades**   
+- **3 new heavenly upgrades**   
+- **8 new achievements**   
 
-- **Cloning Facility (You minigame)**.   
+- **Cloning Facility (You minigame)**   
     - Synthesize, raise, and combine clones to maximize their gene strength, all purchased You will take on those genes as effects to enhance your cookie production!    
 
 (I'm working on adding more in future!) 
