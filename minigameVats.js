@@ -95,11 +95,11 @@ M.launch = function(){
 		M.commissionsAppliedPowerPerCurve = 25;
 		M.commissionsSkipCpsCostPerSkip = 2*60*60;
 
-		M.pppDiscount = 0.9;
+		M.pppDiscount = 0.95;
 		M.pppChanceMult = 1.05;
 		M.pppFavouredPowerMult = 1.05;
 
-		M.tickDur = MEMdebug?0.1:(3 * 60); // 3 minutes so 20 ticks = 1 hour
+		M.tickDur = Game.sesame?0.1:(3 * 60); // 3 minutes so 20 ticks = 1 hour
 		M.nextTick = Date.now() + (M.tickDur * 1000);
 		
 		M.toCompute = 0;
@@ -162,7 +162,7 @@ M.launch = function(){
 		
 		M.sacPool = {};
 		M.sacMax = 500;
-		M.sacLikeWeightMult = 15; // Sacrifice favoured personalities are 15x more likely when sacrificing the max of that building
+		M.sacLikeWeightMult = 20; // Sacrifice favoured personalities are 20x more likely when sacrificing the max of that building
 		M.sacSelected = 0;
 		M.sacAmountOld = 1;
 		M.sacAddAmount = 1;
@@ -1303,7 +1303,6 @@ M.launch = function(){
 			
 			M.totalCommissionsCompleted = 0;
 			Game.Win('Plundering paper pirates');
-			M.convertTimes++;
 			M.toCompute = 1;
 			PlaySound('snd/spellFail.mp3',0.75);
 		};
@@ -1324,7 +1323,7 @@ M.launch = function(){
 		};
 
 		M.showBinConfirmPrompt = function(clone) {
-			Game.Prompt('<noClose><id vatsBinConfirm><h3>Destroy clone?</h3><div class="block">'+tinyIcon([4,2,MMMImagePrefix+'/vatsClones.png'])+
+			Game.Prompt('<noClose><id vatsBinConfirm><h3>Destroy clone?</h3><div class="block">'+tinyIcon([4,2,Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png'])+
 				'<div class="line"></div>'+
 				'<div id="vatsBinConfirmContainer">'+
 					'Are you <b>SURE</b> you want to <span class="red"><b>destroy</b></span> this clone?'+
@@ -1364,7 +1363,7 @@ M.launch = function(){
 
 			name = '<b>'+ name +'</b>';
 
-			Game.Prompt('<noClose><id vatsTicksPrompt><h3>Set Duration</h3><div class="block">'+tinyIcon([icon[0],icon[1],MMMImagePrefix+'/vatsClones.png'])+'<div class="line"></div>'+
+			Game.Prompt('<noClose><id vatsTicksPrompt><h3>Set Duration</h3><div class="block">'+tinyIcon([icon[0],icon[1],Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png'])+'<div class="line"></div>'+
 				'<div id="vatsTicksPromptContainer"></div></div>',
 				[['Submit',0,'float:left'],['Cancel',0,'float:right']],
 				function() {
@@ -1450,18 +1449,18 @@ M.launch = function(){
 			
 			// Icon + Name + activity
 			var str = '<div class="block" style="text-align:left;">'+
-				'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-ageStage*48)+'px 0px;"></div>'+
+				'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-ageStage*48)+'px 0px;"></div>'+
 				'<div class="name">'+M.getCloneName(clone.name)+'</div><div><small>'+ activity +'</small></div>'+
 				'<div class="line"></div>'+
 				// Aging report
 				'<div style="text-align:center;">'+
 					'<div style="display:inline-block;position:relative;box-shadow:0px 0px 0px 1px #000,0px 0px 0px 1px rgba(255,255,255,0.5) inset,0px -2px 2px 0px rgba(255,255,255,0.5) inset;width:256px;height:6px;background:linear-gradient(to right,#ffffff 0%,#f200a1 '+(100*M.ageBrackets[1]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[1]/M.ageBrackets[4]))+'%,#2300ef '+(100*M.ageBrackets[2]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[2]/M.ageBrackets[4]))+'%, #00efe3 '+(100*M.ageBrackets[3]/M.ageBrackets[4])+'%,#FFFFFF '+(0.1+(100*M.ageBrackets[3]/M.ageBrackets[4]))+'%, #5af230 100%)">'+
 						'<div class="vatsCloneGrowthIndicator" style="left:'+Math.floor((ageAlpha)*256)+'px;"></div>'+
-						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:0px 0px;position:absolute;left:'+(0-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-1*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[1]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-2*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[2]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-3*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[3]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
-						'<div style="background:url('+MMMImagePrefix+'/vatsClones.png);background-position:'+(-4*48)+'px 0px;position:absolute;left:'+(256-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:0px 0px;position:absolute;left:'+(0-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:'+(-1*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[1]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:'+(-2*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[2]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:'+(-3*48)+'px 0px;position:absolute;left:'+(((M.ageBrackets[3]/M.ageBrackets[4])*256)-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
+						'<div style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:'+(-4*48)+'px 0px;position:absolute;left:'+(256-24)+'px;top:-32px;transform:scale(0.5,0.5);width:48px;height:48px;"></div>'+
 					'</div><br>'+
 					'<b>'+loc("Age: ")+'</b> '+ M.ageNames[ageStage] +'<br>'+
 					'<small>'+((clone.therapy == 'cryo')?('Clone aging frozen<br>'):(ageStage == 4)?('This clone has fully grown!<br>'):('Next stage in: '+ M.getDurStrFromTicks(M.ageBrackets[ageStage+1]-clone.age) +'.<br>Fully grown in: '+ M.getDurStrFromTicks(M.ageBrackets[4]-clone.age) +'.<br>'))+'</small>'+
@@ -1471,7 +1470,7 @@ M.launch = function(){
 				if (clone.therapy && clone.therapyDurRemaining > 0) {
 					str+='<div class="description">'+
 						'<div class="vatsTherapyEffect">'+
-							'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-48*M.therapies[clone.therapy].icon[0])+'px '+-48*M.therapies[clone.therapy].icon[1]+'px;"></div>'+
+							'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-48*M.therapies[clone.therapy].icon[0])+'px '+-48*M.therapies[clone.therapy].icon[1]+'px;"></div>'+
 							'<div class="name">'+ M.therapies[clone.therapy].name +'</div>'+
 							'<div class="line"></div>'+
 							'<div style="text-align:left;">'+
@@ -1624,7 +1623,7 @@ M.launch = function(){
 				};
 				
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsInfo">'+
-					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Cloning Facility Info</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
@@ -1649,7 +1648,7 @@ M.launch = function(){
 		M.binTooltip = function(id) {
 			return function() {
 				var str='<div style="padding:8px 4px;min-width:350px;" id="tooltipVatsInfo">'+
-					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-3*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-3*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Destroy Clone</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
@@ -1672,7 +1671,7 @@ M.launch = function(){
 						if (M.parent.amount < therapy.youRequirement) {
 							str+='<div style="text-align:center;">Therapy unlocked at '+therapy.youRequirement+' <b>You</b>.</div>';
 						} else {
-							str+='<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-therapy.icon[0]*48)+'px '+(-therapy.icon[1]*48)+'px;"></div>'+
+							str+='<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-therapy.icon[0]*48)+'px '+(-therapy.icon[1]*48)+'px;"></div>'+
 							'<div style="float:right;text-align:right;width:150px;"><small>'+ M.getDurStrFromTicks(1) +' of therapy costs:</small><br><span class="price '+ (M.canAfford(cost)?'':'disabled') +'">'+Beautify(Math.round(shortenNumber(cost)))+'</span><br><small>'+loc("%1 of CpS",[Game.sayTime((cost/Game.cookiesPs)*Game.fps,-1)])+'</small></div>'+
 							'<div style:"width:200px;"><div class="name">'+ therapy.name +'</div><small>Drag this therapy onto a growing clone in storage to enact the therapy.</small></div>'+
 							'<div class="line"></div>'+
@@ -1741,7 +1740,7 @@ M.launch = function(){
 				effStr+= '<div style="font-size:10px;margin-left:40px;"><small>Signed clone contracts of each personality: <b>'+completeSets+'x</b></small>.</div>'
 
 				var str='<div style="padding:8px 4px;min-width:350px;" id="commissionTooltipVatsInfo">'+
-					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-1*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Contract Clones Info</div></div>'+
 					'<div class="line"></div>'+
 					'<div class="description">'+
@@ -1802,7 +1801,7 @@ M.launch = function(){
 		M.commissionsSacrificeTooltip = function(id) {
 			return function() {				
 				var str='<div style="padding:8px 4px;min-width:350px;" id="commissionTooltipVatsInfo">'+
-					'<div class="icon" style="background:url('+MMMImagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-5*48)+'px '+(-2*48)+'px;"></div>'+
+					'<div class="icon" style="background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);float:left;margin-left:-8px;margin-top:-8px;background-position:'+(-5*48)+'px '+(-2*48)+'px;"></div>'+
 					'<div><div class="name">Destroy clone contract records</div></div>'+
 					'<div class="line"></div>'+
 					'A group of lawyers raid your filing cabinets and <span class="red">steal the records of all signed clone contracts</span>.<br>Their briefcases are too full to carry a manilla folder, so in return, they leave behind <span class="green">'+M.getCommissionsLumps()+' sugar lumps</span> that are yours for the taking. <small>(Number of sugar lumps increases with signed clone contracts of each personality)</small><br>This action is only available after signing at least 1 contract of each clone personality.'+
@@ -1966,7 +1965,7 @@ M.launch = function(){
 
 		var str='';
 		str+='<style>'+
-		'#vatsBG{background:url('+Game.resPath+'img/shadedBorders.png),url('+MMMImagePrefix+'/BGvats.png);background-size:100% 100%,auto;position:absolute;left:0px;right:0px;top:0px;bottom:16px;}'+
+		'#vatsBG{background:url('+Game.resPath+'img/shadedBorders.png),url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/BGvats.png);background-size:100% 100%,auto;position:absolute;left:0px;right:0px;top:0px;bottom:16px;}'+
 		'#vatsContent{position:relative;box-sizing:border-box;padding:4px;text-align:center;}'+
 		
 		'#vatsCenter{text-align:center;padding:8px;position:absolute;top:4px;left:35%;width:30%;height:'+M.topShelfSize+'px;box-sizing:border-box;}'+
@@ -1989,7 +1988,7 @@ M.launch = function(){
 
 		'.vatsSac{box-sizing:border-box;font-size:11px;font-weight:bold;padding:2px 4px;margin:1px;height:18px;display:inline-block;}'+
 
-		'.vatsVat{cursor:pointer;position:relative;color:#f33;text-shadow:0px 0px 4px #000,0px 0px 6px #000;font-weight:bold;font-size:12px;display:inline-block;width:60px;height:74px;background:url('+MMMImagePrefix+'/crudeVats.png);}'+
+		'.vatsVat{cursor:pointer;position:relative;color:#f33;text-shadow:0px 0px 4px #000,0px 0px 6px #000;font-weight:bold;font-size:12px;display:inline-block;width:60px;height:74px;background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/crudeVats.png);}'+
 		'.vatsVat.on:hover{z-index:1000000001;top:-1px;}'+
 		'.vatsVat.on:active{top:1px;}'+
 		'.vatsVat:hover{background-position:0px -74px;} .vatsVat:active{background-position:0px 74px;}'+
@@ -1998,7 +1997,7 @@ M.launch = function(){
 		'.vatsVat3{background-position:-180px 0px;} .vatsVat3:hover{background-position:-180px -74px;} .vatsVat3:active{background-position:-180px 74px;}'+
 		
 		'.vatsCloneHolder{cursor:pointer;display:inline-block;position:relative;width:100%;height:100%;}'+
-		'.vatsCloneIcon{pointer-events:none;width:48px;height:48px;position:relative;background:url('+MMMImagePrefix+'/vatsClones.png);z-index:11;}'+
+		'.vatsCloneIcon{pointer-events:none;width:48px;height:48px;position:relative;background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);z-index:11;}'+
 		'.vatsCloneHolderDrag{position:absolute;left:0px;top:0px;right:0px;bottom:0px;background:#999;opacity:0;cursor:pointer;}'+
 		'.vatsCloneHolder:hover .vatsCloneIcon{top:-1px;}'+
 		'.vatsCloneHolder:hover .vatsCloneIcon{animation-name:bounce;animation-duration:0.8s;}'+
@@ -2065,10 +2064,10 @@ M.launch = function(){
 						});
 					str+='<div style="margin-top:4px;width:100%">';
 						str+='<a id="vatsSynthesizerStart" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">If this vat is empty, you can synthesize a new clone to make one here.<div class="line"></div>Buildings can be sacrificed for the synthesis to increase sacrifice power and adjust the chances of certain personalities.<div class="line"></div>Minimum potential increases with synthesize time, <b>You</b> level and sacrifice power.</div>')+'>';
-							str+='<u>Begin synthesis</u>';
+							str+='Begin synthesis';
 						str+='</a>';
 						str+='<a id="vatsSynthesizerCancel" style="display:none;" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Cancelling synthesizing will not refund any cookies or sacrificed buildings and will <b>not</b> create a new clone.</div>')+'>';
-							str+='<u>Cancel synthesis</u>';
+							str+='Cancel synthesis';
 						str+='</a>';
 					str+='</div>';
 				str+='</div>';
@@ -2110,7 +2109,7 @@ M.launch = function(){
 							}
 						);
 					};
-					str+='<div style="width:24px;height:24px;margin-bottom:23px;display:inline-block;background:url('+MMMImagePrefix+'/vatsClones.png);background-position:0px '+(-2*48)+'px;"></div>';
+					str+='<div style="width:24px;height:24px;margin-bottom:23px;display:inline-block;background:url('+Game.mods['MoonworksAnzacBiscuits'].imagePrefix+'/vatsClones.png);background-position:0px '+(-2*48)+'px;"></div>';
 					str+=M.makeVat('combinerOutputVat', 'Combiner Mk I',
 					function(clone) {
 						return;
@@ -2130,10 +2129,10 @@ M.launch = function(){
 				str+='</div>'
 				str+='<div style="margin-top:4px;width:100%;box-sizing:border-box;">';
 					str+='<a id="vatsCombinerStart" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Two adult clones are required to begin fusion. This will destroy both clones and create a new adult clone.<div class="line"></div>Personality and potential will be either of the original clones\' or a number inbetween.<div class="line"></div>All genes will be inherited from the original clones\' albeit with 10% reduced applied upgrade power (doubled up genes have applied upgrade power reduced by 30% instead).<div class="line"></div>Each gene has a chance to be destroyed upon clone creation, this chance decreases with fusion time and <b>You</b> level.</div>')+'>';
-						str+='<u>Begin fusion</u>';
+						str+='Begin fusion';
 					str+='</a>';
 					str+='<a id="vatsCombinerCancel" style="display:none;" class="vatsOption" '+Game.getTooltip('<div style="padding:8px;width:300px;font-size:11px;text-align:center;">Cancelling fusion will not refund spent cookies and will <b>not</b> fuse clones to make a new clone.</div>')+'>';
-						str+='<u>Cancel fusion</u>';
+						str+='Cancel fusion';
 					str+='</a>';
 				str+='</div>';
 			str+='</div>';
@@ -2186,7 +2185,7 @@ M.launch = function(){
 								str+='<div class="vatsCloneIcon shadowFilter" style="background-position:'+(-5*48)+'px '+(-2*48)+'px;"></div>';
 							str+='</div>';
 						str+='</div>';
-						str+='<div id="vatsSubmitCommission" style="margin-top:3px;" class="vatsOption" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSubmitTooltip()','this')+'><u>Sign clone contract</u></div>';
+						str+='<div id="vatsSubmitCommission" style="margin-top:3px;" class="vatsOption" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSubmitTooltip()','this')+'>Sign clone contract</div>';
 						str+='<div class="framed" style="position:relative;text-align:left">';
 							str+='<div id="vatsSkipCommission" style="position:absolute;top:2px;left:3px;margin-top:2px;" class="vatsOption" '+Game.getDynamicTooltip('Game.ObjectsById['+M.parent.id+'].minigame.commissionsSkipTooltip()','this')+'>Skip</div>';
 							str+='<div style="text-align:center;" class="title vatsPanelLabel">Current request:</div>';
@@ -2298,7 +2297,7 @@ M.launch = function(){
 		});
 
 		AddEvent(l('vatsSubmitCommission'),'click',function() {
-			if (MEMdebug || M.getCommissionsOfferMismatches(M.currentCommission).length==0) {
+			if (Game.sesame || M.getCommissionsOfferMismatches(M.currentCommission).length==0) {
 				M.completeCommission(true, M.currentCommission);
 			};
 		});
@@ -2521,7 +2520,7 @@ M.launch = function(){
 		M.sacPool = {};
 		M.sacSelected = 0;
 		if (hard == 1) {
-			M.clonesN = MEMdebug?500:0;
+			M.clonesN = Game.sesame?500:0;
 			M.clones = {};
 			M.lastClone = 0;
 			M.nextTick = Date.now() + (M.tickDur * 1000);
@@ -2684,7 +2683,7 @@ M.launch = function(){
 		};
 
 		if (commissionSubmit && M.vats['commissionVat'] && M.currentCommission) {
-			var canStart = MEMdebug || M.vats['commissionVat'].holds && M.getCommissionsOfferMismatches(M.currentCommission).length==0;
+			var canStart = Game.sesame || M.vats['commissionVat'].holds && M.getCommissionsOfferMismatches(M.currentCommission).length==0;
 			if (!canStart && !commissionSubmit.classList.contains('disabled')) {
 				commissionSubmit.classList.add('disabled');
 				triggerAnim(commissionSubmit,'pucker');

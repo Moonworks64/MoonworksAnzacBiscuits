@@ -20,6 +20,10 @@ To make a bookmarklet: Go to your bookmarks, right click -> new page, then set t
 
 The mod will need to be loaded every time you open up Cookie Clicker unless you use something like [CCMM](https://github.com/klattmose/CookieClickerModManager).    
 
+Which speaking of, here's the mod URL which you use for CCMM:
+
+> https://moonworks64.github.io/MoonworksAnzacBiscuits/MoonworksAnzacBiscuits.js
+
 No Steam version yet! I don't have Cookie Clicker on steam, sorry!  
 
 Bugs may be present! Create a backup of your save data before loading!
