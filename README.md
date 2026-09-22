@@ -1,8 +1,10 @@
 # Moonwork's Anzac Biscuits
 
-*Current version: 0.1*    
+*Current version: 0.11*    
 
 This is a mod for [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/) which adds extra minigames to the buildings (and potentially some more things in future).  
+
+[Moonwork's New Tiers](https://github.com/Moonworks64/MoonworksNewTiers) is loaded alongside this mod!
 
 ## How to load
 
@@ -46,7 +48,10 @@ Currently it adds:
     - This does break saves from 0.1, sorry! But the rework does mean this will happen less in future
 - Added 3 new heavenly upgrades
     - They all give sugar lumps but require a certain number of 9's in your prestige level
-- Added compatability (and automatic loading) for [Moonworks New Tier's](https://github.com/Moonworks64/MoonworksNewTiers)
+- Made Cloning Facility upgrades more expensive
+    - This is done to increase the setback the minigame gets when ascending
+- Misc fixes and changes
+- Added compatability (and automatic loading) for [Moonwork's New Tiers](https://github.com/Moonworks64/MoonworksNewTiers)
 
 **0.1** 
 - Initial release
