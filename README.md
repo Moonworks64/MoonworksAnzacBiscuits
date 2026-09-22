@@ -38,3 +38,16 @@ Currently it adds:
     - Synthesize, raise, and combine clones to maximize their gene strength, all purchased You will take on those genes as effects to enhance your cookie production!    
 
 (I'm working on adding more in future!) 
+
+## Version history
+
+**0.11**
+- Redid the saving code and a bunch of backend stuff
+    - This does break saves from 0.1, sorry! But the rework does mean this will happen less in future
+- Added 3 new heavenly upgrades
+    - They all give sugar lumps but require a certain number of 9's in your prestige level
+- Added compatability (and automatic loading) for [Moonworks New Tier's](https://github.com/Moonworks64/MoonworksNewTiers)
+
+**0.1** 
+- Initial release
+- Added Cloning Facility (You Minigame)
